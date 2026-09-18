@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A simple, responsive login page built with HTML, CSS, and JavaScript."
+    />
+    <title>Welcome back | Northstar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="brand-panel" aria-label="Northstar introduction">
+        <a class="brand" href="#" aria-label="Northstar home">
+          <span class="brand-mark" aria-hidden="true">N</span>
+          <span>northstar</span>
+        </a>
+
+        <div class="brand-copy">
+          <p class="eyebrow">Your work, in one clear view</p>
+          <h1>Make space for your next big idea.</h1>
+          <p class="intro">
+            Bring your projects, people, and progress together in a workspace
+            designed to keep you moving forward.
+          </p>
+        </div>
+
+        <div class="quote-card">
+          <span class="quote-mark" aria-hidden="true">“</span>
+          <blockquote>
+            Northstar gives our team clarity without slowing us down.
+          </blockquote>
+          <cite>— Maya Chen, Product Lead</cite>
+        </div>
+      </section>
+
+      <section class="login-panel" aria-labelledby="login-title">
+        <div class="login-card">
+          <div class="mobile-brand brand">
+            <span class="brand-mark" aria-hidden="true">N</span>
+            <span>northstar</span>
+          </div>
+
+          <p class="eyebrow">Welcome back</p>
+          <h2 id="login-title">Sign in to your account</h2>
+          <p class="subheading">Enter your details below to continue.</p>
+
+          <form id="login-form" novalidate>
+            <div class="field-group">
+              <label for="email">Email address</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+                required
+              />
+              <p class="field-error" id="email-error" role="alert"></p>
+            </div>
+
+            <div class="field-group">
+              <div class="label-row">
+                <label for="password">Password</label>
+                <a href="#" class="text-link">Forgot password?</a>
+              </div>
+              <div class="password-wrapper">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="Enter your password"
+                  minlength="6"
+                  required
+                />
+                <button
+                  class="password-toggle"
+                  id="password-toggle"
+                  type="button"
+                  aria-label="Show password"
+                >
+                  Show
+                </button>
+              </div>
+              <p class="field-error" id="password-error" role="alert"></p>
+            </div>
+
+            <label class="remember-me">
+              <input type="checkbox" name="remember" />
+              <span class="custom-checkbox" aria-hidden="true"></span>
+              <span>Remember me for 30 days</span>
+            </label>
+
+            <button class="submit-button" type="submit">Sign in</button>
+            <p class="form-message" id="form-message" role="status"></p>
+          </form>
+
+          <p class="signup-prompt">
+            Don't have an account? <a href="#" class="text-link">Create one</a>
+          </p>
+          <p class="demo-note">Demo only — no information is sent anywhere.</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
