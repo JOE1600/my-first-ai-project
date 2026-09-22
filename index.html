@@ -105,15 +105,21 @@
           <p class="booking-intro">This is a private enquiry form for the Boxwood team. Your details stay in this browser demo until a secure booking service is connected.</p>
         </div>
         <form class="booking-form" id="booking-form" novalidate>
-          <label for="guest-name">Your name</label>
-          <input id="guest-name" name="guestName" autocomplete="name" required minlength="2" maxlength="80" />
-          <span class="input-error" id="guest-name-error"></span>
-          <label for="guest-email">Email address</label>
-          <input id="guest-email" name="guestEmail" type="email" autocomplete="email" required maxlength="120" />
-          <span class="input-error" id="guest-email-error"></span>
-          <label for="guest-note">What would make the night special? <span>(optional)</span></label>
-          <textarea id="guest-note" name="guestNote" rows="3" maxlength="400"></textarea>
-          <span class="input-hint"><span id="note-count">0</span>/400 characters</span>
+          <div class="field">
+            <label for="guest-name">Your name</label>
+            <input id="guest-name" name="guestName" autocomplete="name" required minlength="2" maxlength="80" />
+            <span class="input-error" id="guest-name-error"></span>
+          </div>
+          <div class="field">
+            <label for="guest-email">Email address</label>
+            <input id="guest-email" name="guestEmail" type="email" autocomplete="email" required maxlength="120" />
+            <span class="input-error" id="guest-email-error"></span>
+          </div>
+          <div class="field field-wide">
+            <label for="guest-note">What would make the night special? <span>(optional)</span></label>
+            <textarea id="guest-note" name="guestNote" rows="3" maxlength="400"></textarea>
+            <span class="input-hint"><span id="note-count">0</span>/400 characters</span>
+          </div>
           <button class="button button-gold" type="submit">Send a private enquiry <span>↗</span></button>
           <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
         </form>
