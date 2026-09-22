@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/lenis@1.3.8/dist/lenis.min.js" defer></script>
     <script src="script.js" defer></script>
   </head>
   <body>
@@ -30,7 +31,7 @@
           <div class="arc arc-two"></div>
           <div class="court-line"></div>
         </div>
-        <div class="hero-copy">
+        <div class="hero-copy reveal">
           <p class="eyebrow">Hobart · Tasmania · Game night, elevated</p>
           <h1>From court<br /><em>to calm.</em></h1>
           <p class="hero-intro">The JackJumpers Game Night Escape is an unforgettable night away — premium hospitality, a packed arena and the quiet luxury of Islington Hotel.</p>
@@ -40,7 +41,7 @@
         <p class="scroll-note">Scroll to discover <span>↓</span></p>
       </section>
 
-      <section class="experience section-grid" id="experience">
+      <section class="experience section-grid reveal" id="experience">
         <div class="section-label"><span>01</span><span>The idea</span></div>
         <div class="experience-copy">
           <p class="eyebrow green">Not just a ticket. A story.</p>
@@ -61,17 +62,17 @@
           <h2>Easy to book.<br /><em>Impossible to forget.</em></h2>
         </div>
         <div class="journey-grid">
-          <article class="journey-card card-stay">
+          <article class="journey-card card-stay spotlight-card reveal">
             <div class="card-number">01</div>
             <div><p class="card-kicker">The beginning</p><h3>Stay at<br />Islington</h3><p class="card-body">Your beautiful Hobart base before and after the game. Slow down, settle in.</p></div>
             <span class="card-arrow">↗</span>
           </article>
-          <article class="journey-card card-lounge">
+          <article class="journey-card card-lounge spotlight-card reveal">
             <div class="card-number">02</div>
             <div><p class="card-kicker">The warm-up</p><h3>Emerald<br />Lounge</h3><p class="card-body"><strong>90 minutes</strong> of pre-game premium hospitality before tip-off.</p></div>
             <span class="card-arrow">↗</span>
           </article>
-          <article class="journey-card card-game">
+          <article class="journey-card card-game spotlight-card reveal">
             <div class="card-number">03</div>
             <div><p class="card-kicker">The main event</p><h3>Feel the<br />energy</h3><p class="card-body">Take your seat for the JackJumpers, then return to the comfort of your room.</p></div>
             <span class="card-arrow">↗</span>
@@ -79,7 +80,7 @@
         </div>
       </section>
 
-      <section class="offer" id="book">
+      <section class="offer reveal" id="book">
         <div>
           <p class="eyebrow">One night. Every detail considered.</p>
           <h2>Make it a night<br /><em>worth staying for.</em></h2>
@@ -94,10 +95,30 @@
         <div class="price-card">
           <span>From</span><strong>$749</strong><small>per person · single occupancy</small>
           <button class="button button-light" type="button" id="reserve-button">Reserve your escape <span>↗</span></button>
-          <p class="reserve-message" id="reserve-message" role="status"></p>
+          <p class="reserve-message" id="reserve-message" role="status" aria-live="polite"></p>
         </div>
       </section>
+      <section class="booking-panel reveal" aria-labelledby="booking-title">
+        <div>
+          <p class="eyebrow green">Make it personal</p>
+          <h2 id="booking-title">Tell us how to<br /><em>shape your night.</em></h2>
+          <p class="booking-intro">This is a private enquiry form for the Boxwood team. Your details stay in this browser demo until a secure booking service is connected.</p>
+        </div>
+        <form class="booking-form" id="booking-form" novalidate>
+          <label for="guest-name">Your name</label>
+          <input id="guest-name" name="guestName" autocomplete="name" required minlength="2" maxlength="80" />
+          <span class="input-error" id="guest-name-error"></span>
+          <label for="guest-email">Email address</label>
+          <input id="guest-email" name="guestEmail" type="email" autocomplete="email" required maxlength="120" />
+          <span class="input-error" id="guest-email-error"></span>
+          <label for="guest-note">What would make the night special? <span>(optional)</span></label>
+          <textarea id="guest-note" name="guestNote" rows="3" maxlength="400"></textarea>
+          <span class="input-hint"><span id="note-count">0</span>/400 characters</span>
+          <button class="button button-gold" type="submit">Send a private enquiry <span>↗</span></button>
+          <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
     </main>
-    <footer><span>BOXWOOD × ISLINGTON HOTEL × JACKJUMPERS</span><span>Limited game-night allocation · Details confirmed at booking</span></footer>
+    <footer><span>BOXWOOD × ISLINGTON HOTEL × JACKJUMPERS</span><span>Limited game-night allocation · Details confirmed at booking</span><span>Static preview · no data is transmitted</span></footer>
   </body>
 </html>
