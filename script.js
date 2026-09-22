@@ -8,6 +8,8 @@ const guestEmail = document.querySelector("#guest-email");
 const guestNote = document.querySelector("#guest-note");
 const formStatus = document.querySelector("#form-status");
 const noteCount = document.querySelector("#note-count");
+const gameChoice = document.querySelector("#game-choice");
+const gameDetail = document.querySelector("#game-detail");
 
 const clientRateLimit = {
   lastSubmission: 0,
@@ -85,6 +87,14 @@ document.querySelectorAll(".spotlight-card").forEach((card) => {
     card.style.removeProperty("--tilt-x");
     card.style.removeProperty("--tilt-y");
   });
+});
+
+gameChoice?.addEventListener("change", () => {
+  const isNext = gameChoice.value === "next";
+  gameDetail.innerHTML = `
+    <span class="game-badge">JJ</span>
+    <div><strong>JackJumpers <i>vs</i> ${isNext ? "opponent to be announced" : "your chosen home-game opponent"}</strong><small>${isNext ? "Next home game · date and ticket allocation confirmed with you" : "Future home game · tell us your preferred date in the enquiry"}</small></div>
+  `;
 });
 
 reserveButton?.addEventListener("click", () => {
