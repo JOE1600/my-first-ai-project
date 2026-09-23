@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boxwood enquiry manager</title>
+  <style>
+    :root { color-scheme: light; font-family: Arial, sans-serif; background: #f4f1eb; color: #17211d; }
+    body { max-width: 1100px; margin: 0 auto; padding: 32px 18px; }
+    h1 { color: #174b3b; font-family: Georgia, serif; font-weight: 500; }
+    form, .status, table { background: #fff; border: 1px solid #d9d2c5; border-radius: 8px; padding: 16px; }
+    form { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+    label { display: grid; gap: 6px; font-size: 13px; }
+    input, button { min-height: 40px; border: 1px solid #aaa396; border-radius: 5px; padding: 0 10px; font: inherit; }
+    input { min-width: 280px; } button { background: #174b3b; color: #fff; border-color: #174b3b; cursor: pointer; }
+    .status { margin: 16px 0; } .error { color: #9d2525; } .empty { color: #5d6b64; }
+    table { width: 100%; border-collapse: collapse; padding: 0; overflow: hidden; }
+    th, td { text-align: left; vertical-align: top; border-bottom: 1px solid #e4ded4; padding: 12px 10px; font-size: 14px; }
+    th { color: #174b3b; background: #f6f2ea; } td { white-space: pre-wrap; }
+    @media (max-width: 700px) { body { padding: 20px 10px; } input { min-width: 100%; } form { display: grid; } table { display: block; overflow-x: auto; white-space: nowrap; } }
+  </style>
+</head>
+<body>
+  <h1>Boxwood enquiry manager</h1>
+  <p>Private read-only view of enquiries saved by the game-night website.</p>
+  <form id="manager-form">
+    <label>API address <input id="api-base" value="http://localhost:5050" required></label>
+    <label>Manager key <input id="admin-key" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Load enquiries</button>
+  </form>
+  <p class="status" id="status" role="status" aria-live="polite">Enter the manager key to load saved enquiries.</p>
+  <div id="results"></div>
+  <script>
+    const form = document.querySelector("#manager-form");
+    const status = document.querySelector("#status");
+    const results = document.querySelector("#results");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      status.className = "status";
+      status.textContent = "Loading enquiries…";
+      results.replaceChildren();
+      try {
+        const response = await fetch(`${document.querySelector("#api-base").value.replace(/\/$/, "")}/api/enquiries`, {
+          headers: { "X-Admin-Key": document.querySelector("#admin-key").value }
+        });
+        if (response.status === 401) throw new Error("Unauthorised. Check the manager key.");
+        if (!response.ok) throw new Error("The enquiry list could not be loaded.");
+        const enquiries = await response.json();
+        status.textContent = `${enquiries.length} entr${enquiries.length === 1 ? "y" : "ies"} saved.`;
+        if (!enquiries.length) { results.innerHTML = '<p class="empty">No enquiries have been submitted yet.</p>'; return; }
+        results.innerHTML = `<table><thead><tr><th>Name</th><th>Email</th><th>Game</th><th>Note</th><th>Received (UTC)</th></tr></thead><tbody>${enquiries.map((item) => `<tr><td>${escapeHtml(item.guestName)}</td><td>${escapeHtml(item.guestEmail)}</td><td>${escapeHtml(item.gameChoice)}</td><td>${escapeHtml(item.guestNote || "")}</td><td>${escapeHtml(item.createdAtUtc)}</td></tr>`).join("")}</tbody></table>`;
+      } catch (error) {
+        status.className = "status error";
+        status.textContent = error.message.includes("Failed to fetch") ? "The API is not running or is unreachable." : error.message;
+      }
+    });
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]);
+    }
+  </script>
+</body>
+</html>

@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 var databaseDirectory = Path.Combine(builder.Environment.ContentRootPath, "app_data");
 Directory.CreateDirectory(databaseDirectory);
 var connectionString = $"Data Source={Path.Combine(databaseDirectory, "boxwood.db")}";
+var adminApiKey = Environment.GetEnvironmentVariable("BOXWOOD_ADMIN_API_KEY");
 
 builder.Services.AddCors(options =>
 {
@@ -20,6 +21,38 @@ app.UseCors("Frontend");
 await InitialiseDatabaseAsync(connectionString);
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+
+app.MapGet("/api/enquiries", async (HttpRequest request) =>
+{
+    if (!IsAuthorised(request, adminApiKey))
+    {
+        return Results.Unauthorized();
+    }
+
+    const string selectSql = @"
+        SELECT Id, GuestName, GuestEmail, GuestNote, GameChoice, CreatedAtUtc
+        FROM Enquiries
+        ORDER BY Id DESC;";
+
+    var enquiries = new List<EnquiryResponse>();
+    await using var connection = new SqliteConnection(connectionString);
+    await connection.OpenAsync();
+    await using var command = connection.CreateCommand();
+    command.CommandText = selectSql;
+    await using var reader = await command.ExecuteReaderAsync();
+    while (await reader.ReadAsync())
+    {
+        enquiries.Add(new EnquiryResponse(
+            reader.GetInt64(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.IsDBNull(3) ? null : reader.GetString(3),
+            reader.GetString(4),
+            reader.GetString(5)));
+    }
+
+    return Results.Ok(enquiries);
+});
 
 app.MapPost("/api/enquiries", async (EnquiryRequest request, HttpContext context) =>
 {
@@ -93,6 +126,13 @@ static Dictionary<string, string[]> ValidateRequest(EnquiryRequest request)
     return errors;
 }
 
+static bool IsAuthorised(HttpRequest request, string? adminApiKey)
+{
+    return !string.IsNullOrWhiteSpace(adminApiKey)
+        && request.Headers.TryGetValue("X-Admin-Key", out var suppliedKey)
+        && suppliedKey == adminApiKey;
+}
+
 static async Task InitialiseDatabaseAsync(string connectionString)
 {
     await using var connection = new SqliteConnection(connectionString);
@@ -141,3 +181,11 @@ public sealed class EnquiryRequest
     public string? GuestNote { get; init; }
     public string GameChoice { get; init; } = string.Empty;
 }
+
+public sealed record EnquiryResponse(
+    long Id,
+    string GuestName,
+    string GuestEmail,
+    string? GuestNote,
+    string GameChoice,
+    string CreatedAtUtc);

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Boxwood x Islington x JackJumpers | Website roadmap</title>
+  <style>
+    @page { size: A4; margin: 16mm 15mm; }
+    :root { --ink:#17211d; --muted:#5d6b64; --green:#174b3b; --gold:#b48a43; --cream:#f6f2ea; --line:#d9d2c5; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); font:10.5pt/1.48 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif; }
+    h1,h2,h3 { margin:0; font-family:Georgia,"Times New Roman",serif; font-weight:500; }
+    h1 { color:white; font-size:31pt; line-height:1.05; max-width:150mm; }
+    h1 em,h2 em { color:#d8b36b; font-style:normal; }
+    h2 { color:var(--green); font-size:20pt; margin-bottom:8px; }
+    h3 { color:var(--green); font-size:13pt; margin:12px 0 4px; }
+    p { margin:5px 0 9px; }
+    .cover { background:var(--green); color:white; padding:19mm 17mm 17mm; margin:-16mm -15mm 14mm; min-height:85mm; }
+    .eyebrow { color:#d8b36b; font-size:8pt; letter-spacing:1.8px; text-transform:uppercase; font-weight:700; margin-bottom:12px; }
+    .cover p:last-child { color:#dce7df; max-width:145mm; margin-top:13px; }
+    .meta { display:flex; gap:24px; margin-top:16px; color:#dce7df; font-size:8.5pt; }
+    .section { margin:0 0 17px; break-inside:avoid; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .card { border:1px solid var(--line); border-radius:6px; padding:11px 12px; break-inside:avoid; }
+    .card strong { color:var(--green); }
+    .status { background:var(--cream); border-left:4px solid var(--gold); padding:10px 12px; margin:8px 0 12px; }
+    ul { margin:5px 0 7px 18px; padding:0; }
+    li { margin:3px 0; }
+    .risk { display:grid; grid-template-columns:24mm 1fr; gap:8px; border-bottom:1px solid var(--line); padding:7px 0; }
+    .risk b { color:#9d2525; font-size:8pt; letter-spacing:.8px; }
+    .priority { color:var(--gold); font-weight:700; }
+    table { width:100%; border-collapse:collapse; font-size:9pt; }
+    th { text-align:left; background:var(--green); color:white; padding:7px; }
+    td { vertical-align:top; border-bottom:1px solid var(--line); padding:7px; }
+    .footer { border-top:1px solid var(--line); color:var(--muted); font-size:8pt; margin-top:16px; padding-top:7px; }
+    .page-break { break-before:page; }
+  </style>
+</head>
+<body>
+  <header class="cover">
+    <div class="eyebrow">Boxwood × Islington Hotel × JackJumpers</div>
+    <h1>Website <em>workbook</em><br>and next-stage roadmap</h1>
+    <p>A practical view of what the game-night website can do today, how the new backend works, what remains before launch, and how to make the visual experience more distinctively Islington.</p>
+    <div class="meta"><span>Prepared 23 September 2026</span><span>Current stage: local MVP</span></div>
+  </header>
+
+  <section class="section">
+    <h2>1. What exists now</h2>
+    <div class="status"><strong>Current status:</strong> The frontend and first backend milestone are working locally. The site is not yet publicly hosted, and it is not a complete booking or payment system.</div>
+    <div class="grid">
+      <div class="card"><strong>Customer-facing website</strong><ul><li>Premium “From court to calm” campaign page</li><li>Boxwood, Islington and JackJumpers story</li><li>Game-night choice area</li><li>Offer and package inclusions</li><li>Responsive phone, tablet and desktop layout</li></ul></div>
+      <div class="card"><strong>Working backend</strong><ul><li>ASP.NET Core Minimal API in C#</li><li>SQLite database created automatically</li><li>Enquiry validation on the server</li><li>15-second duplicate-submission cooldown</li><li>Health endpoint for deployment checks</li></ul></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>2. How the website works</h2>
+    <table>
+      <tr><th>Step</th><th>Guest experience</th><th>System behaviour</th></tr>
+      <tr><td>1. Discover</td><td>Guest reads the narrative, sees the package and explores Islington.</td><td>Static HTML, CSS and JavaScript load in the browser.</td></tr>
+      <tr><td>2. Choose a night</td><td>Guest selects the next home game or a future home game.</td><td>The selected option is included in the enquiry request.</td></tr>
+      <tr><td>3. Enquire</td><td>Guest enters name, email and an optional note.</td><td>Browser validation runs first; the API validates again.</td></tr>
+      <tr><td>4. Save securely enough for MVP</td><td>Guest receives a confirmation message.</td><td>API writes the enquiry to SQLite and returns a confirmation ID.</td></tr>
+      <tr><td>5. Human follow-up</td><td>Boxwood team confirms availability, ticket allocation and final price.</td><td>This step is currently manual; no email, CRM or payment integration exists yet.</td></tr>
+    </table>
+  </section>
+
+  <section class="section">
+    <h2>3. Work still required before launch</h2>
+    <div class="grid">
+      <div class="card"><h3><span class="priority">Priority 1</span> Hosting and operations</h3><ul><li>Host frontend over HTTPS.</li><li>Host API separately or in the same deployment.</li><li>Use managed PostgreSQL or hosted SQLite-compatible storage for production.</li><li>Set backups, logs, uptime monitoring and a real domain.</li></ul></div>
+      <div class="card"><h3><span class="priority">Priority 2</span> Booking workflow</h3><ul><li>Add staff-only enquiry dashboard.</li><li>Send email notifications to Boxwood.</li><li>Track enquiry status: new, contacted, confirmed, cancelled.</li><li>Connect real game dates, room inventory and ticket availability.</li></ul></div>
+      <div class="card"><h3><span class="priority">Priority 3</span> Commercial flow</h3><ul><li>Confirm package tiers and pricing.</li><li>Add guest count, stay date and room preference fields.</li><li>Add payment or deposit provider only after availability is confirmed.</li><li>Add terms, cancellation policy and privacy notice.</li></ul></div>
+      <div class="card"><h3><span class="priority">Priority 4</span> Quality and accessibility</h3><ul><li>Add automated API and browser tests.</li><li>Test keyboard navigation, focus states and screen readers.</li><li>Compress and serve responsive image sizes.</li><li>Measure conversion, performance and form completion.</li></ul></div>
+    </div>
+  </section>
+
+  <section class="section page-break">
+    <h2>4. Hosting options</h2>
+    <div class="grid">
+      <div class="card"><h3>Simple recommended setup</h3><p><strong>Frontend:</strong> Netlify, Cloudflare Pages or GitHub Pages.</p><p><strong>API:</strong> Render, Railway, Fly.io or an Azure App Service running ASP.NET Core.</p><p><strong>Database:</strong> Managed PostgreSQL for production. Keep SQLite for local development only.</p><p>This split keeps deployment simple and lets the static site stay fast while the API handles enquiries.</p></div>
+      <div class="card"><h3>Single-provider option</h3><p>Deploy the frontend and API to Azure App Service, with Azure Database for PostgreSQL and Application Insights.</p><p>This is more operationally coherent but usually costs more and needs more setup than the separate static-site/API approach.</p></div>
+    </div>
+    <div class="status"><strong>Not yet hosted:</strong> The current GitHub Pages workflow is suitable for the static frontend, but it cannot run the C# API or persist production enquiries by itself.</div>
+  </section>
+
+  <section class="section">
+    <h2>5. Current security exposure</h2>
+    <p>The current build is an MVP and should not be treated as a production booking system yet.</p>
+    <div class="risk"><b>HIGH</b><div><strong>Open CORS policy.</strong> The API currently allows requests from any origin. Restrict this to the real website domain before hosting.</div></div>
+    <div class="risk"><b>HIGH</b><div><strong>No staff authentication or authorisation.</strong> There is no protected admin area, so anyone who can reach a future admin endpoint could access data unless this is added.</div></div>
+    <div class="risk"><b>MEDIUM</b><div><strong>In-memory rate limiting.</strong> It resets when the process restarts and does not coordinate across multiple servers. Use platform or distributed rate limiting in production.</div></div>
+    <div class="risk"><b>MEDIUM</b><div><strong>SQLite operational risk.</strong> A local file is not ideal for concurrent production traffic, backups or multi-instance hosting.</div></div>
+    <div class="risk"><b>MEDIUM</b><div><strong>Forwarded IP trust.</strong> The API reads <code>X-Forwarded-For</code>; configure trusted proxy handling so clients cannot spoof the rate-limit identity.</div></div>
+    <div class="risk"><b>LOW</b><div><strong>Privacy and retention are undefined.</strong> Add a privacy notice, retention period, access controls, deletion process and encrypted production storage.</div></div>
+    <div class="status"><strong>Already improved:</strong> SQL parameters are used, server-side input validation exists, no secrets are hardcoded, and the database file is ignored by Git.</div>
+  </section>
+
+  <section class="section">
+    <h2>6. UI design and image direction</h2>
+    <div class="grid">
+      <div class="card"><h3>UI additions</h3><ul><li>Real game-date cards with opponent, tip-off and availability.</li><li>Package tier comparison: Essential, Premium and Fireside.</li><li>Guest count, date and room preference fields.</li><li>Sticky mobile enquiry CTA.</li><li>Confirmation screen with next steps and contact details.</li><li>Accessible error, loading and success states.</li></ul></div>
+      <div class="card"><h3>More unique Islington look</h3><ul><li>Replace generic stock fireplace imagery with approved Islington photography.</li><li>Add a visual “house tour”: arrival, room, Emerald Lounge, fireplace and morning light.</li><li>Use close crops of timber, books, glassware, linen and heritage details.</li><li>Pair warm interior images with one Hobart/Mount Wellington context image.</li><li>Use consistent warm film treatment rather than unrelated stock photography.</li></ul></div>
+    </div>
+    <div class="status"><strong>Current image situation:</strong> The page currently uses an external Islington logo and one Unsplash fireplace image. The next design pass should replace these with licensed, brand-approved Islington assets and responsive local copies for reliability and performance.</div>
+  </section>
+
+  <section class="section">
+    <h2>7. Recommended delivery sequence</h2>
+    <ol>
+      <li><strong>Connect real data:</strong> game schedule, ticket allocation, package inventory and enquiry statuses.</li>
+      <li><strong>Harden the API:</strong> HTTPS, restricted CORS, production database, distributed rate limiting, authentication and logging.</li>
+      <li><strong>Deploy a staging environment:</strong> test frontend and API together with non-production data.</li>
+      <li><strong>Refresh the visual system:</strong> approved Islington photography, package tiers, dates and conversion-focused CTA.</li>
+      <li><strong>Launch carefully:</strong> privacy terms, monitoring, backups, staff process and a tested enquiry-to-booking handoff.</li>
+    </ol>
+  </section>
+
+  <div class="footer">Prepared from the local Boxwood x Islington x JackJumpers project at its local MVP stage. This document is a planning reference, not a security certification or production readiness approval.</div>
+</body>
+</html>
