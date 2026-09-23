@@ -10,6 +10,7 @@ const formStatus = document.querySelector("#form-status");
 const noteCount = document.querySelector("#note-count");
 const gameChoice = document.querySelector("#game-choice");
 const gameDetail = document.querySelector("#game-detail");
+const apiBase = window.BOXWOOD_API_BASE || "http://localhost:5050";
 
 const clientRateLimit = {
   lastSubmission: 0,
@@ -134,7 +135,7 @@ guestNote?.addEventListener("input", () => {
   noteCount.textContent = String(guestNote.value.length);
 });
 
-bookingForm?.addEventListener("submit", (event) => {
+bookingForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   formStatus.classList.remove("is-error");
   formStatus.textContent = "";
@@ -153,6 +154,39 @@ bookingForm?.addEventListener("submit", (event) => {
   }
 
   clientRateLimit.lastSubmission = now;
-  formStatus.textContent = "Enquiry saved for this demo. A secure booking service would submit it here.";
-  bookingForm.querySelector("button[type=submit]").disabled = true;
+  const submitButton = bookingForm.querySelector("button[type=submit]");
+  submitButton.disabled = true;
+  submitButton.classList.add("is-loading");
+  formStatus.textContent = "Sending your private enquiry…";
+
+  try {
+    const response = await fetch(`${apiBase}/api/enquiries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        guestName: guestName.value.trim(),
+        guestEmail: guestEmail.value.trim(),
+        guestNote: guestNote.value.trim(),
+        gameChoice: gameChoice?.value || "next",
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.title || "The enquiry could not be sent.");
+    }
+
+    formStatus.textContent = "Thank you — your enquiry has been received. The Boxwood team will be in touch.";
+    bookingForm.reset();
+    noteCount.textContent = "0";
+  } catch (error) {
+    clientRateLimit.lastSubmission = 0;
+    formStatus.classList.add("is-error");
+    formStatus.textContent = error.message.includes("Failed to fetch")
+      ? "The booking service is not running. Start the backend and try again."
+      : error.message;
+    submitButton.disabled = false;
+  } finally {
+    submitButton.classList.remove("is-loading");
+  }
 });
