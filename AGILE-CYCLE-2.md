@@ -129,6 +129,7 @@ In Cycle 2 the team worked through most of those risks:
 ## Known limitations
 
 - **.NET 6 is out of support** (see the next section).
+- **GitHub Pages is not enabled on the repository yet,** so the deploy workflow stops at "Configure Pages" (Not Found). This has happened on every deploy so far, not just this cycle. To fix it, open **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**, then re-run the workflow.
 - The firewall, bans and rate limits are held in memory on one server. They reset when the API restarts and are not shared between servers. A network WAF (Cloudflare, Azure Front Door or AWS WAF) is still needed in production.
 - SQLite is fine for a single server. Managed production storage is still recommended.
 - A single tampered row makes the whole manager list fail (500) rather than skipping that row. This is safe, but not friendly.
