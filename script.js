@@ -1,7 +1,5 @@
 const menuToggle = document.querySelector(".menu-toggle");
 const nav = document.querySelector("nav");
-const reserveButton = document.querySelector("#reserve-button");
-const reserveMessage = document.querySelector("#reserve-message");
 const bookingForm = document.querySelector("#booking-form");
 const guestName = document.querySelector("#guest-name");
 const guestEmail = document.querySelector("#guest-email");
@@ -10,6 +8,8 @@ const formStatus = document.querySelector("#form-status");
 const noteCount = document.querySelector("#note-count");
 const gameChoice = document.querySelector("#game-choice");
 const gameDetail = document.querySelector("#game-detail");
+const hotelViewer = document.querySelector("#hotel-viewer");
+const hotelPhotoRing = document.querySelector("#hotel-photo-ring");
 const apiBase = window.BOXWOOD_API_BASE || "http://localhost:5050";
 
 const clientRateLimit = {
@@ -44,6 +44,71 @@ document.querySelectorAll("nav a").forEach((link) => {
     menuToggle?.setAttribute("aria-expanded", "false");
   });
 });
+
+if (hotelViewer && hotelPhotoRing) {
+  const hotelPhotos = Array.from(hotelPhotoRing.querySelectorAll(".hotel-photo-card"));
+  const title = document.querySelector("#hotel-view-title");
+  const description = document.querySelector("#hotel-view-description");
+  const indexLabel = document.querySelector("#hotel-view-index");
+  let activePhoto = 0;
+  let pointerStart = null;
+
+  function showHotelPhoto(index) {
+    activePhoto = (index + hotelPhotos.length) % hotelPhotos.length;
+    hotelPhotoRing.style.transform = `rotateY(${-activePhoto * 72}deg)`;
+
+    const photo = hotelPhotos[activePhoto];
+    if (title) title.textContent = photo.dataset.title;
+    if (description) description.textContent = photo.dataset.description;
+    if (indexLabel) {
+      indexLabel.textContent = `${String(activePhoto + 1).padStart(2, "0")} / ${String(hotelPhotos.length).padStart(2, "0")}`;
+    }
+  }
+
+  hotelPhotos.forEach((photo, index) => {
+    photo.style.setProperty("--photo-index", String(index));
+  });
+
+  document.querySelector("#hotel-view-previous")?.addEventListener("click", () => {
+    showHotelPhoto(activePhoto - 1);
+  });
+
+  document.querySelector("#hotel-view-next")?.addEventListener("click", () => {
+    showHotelPhoto(activePhoto + 1);
+  });
+
+  hotelViewer.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      showHotelPhoto(activePhoto + (event.key === "ArrowRight" ? 1 : -1));
+    }
+  });
+
+  hotelViewer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    pointerStart = event.clientX;
+    hotelViewer.classList.add("is-dragging");
+    hotelViewer.setPointerCapture(event.pointerId);
+  });
+
+  hotelViewer.addEventListener("pointermove", (event) => {
+    if (pointerStart === null) return;
+    const rotation = -activePhoto * 72 + (event.clientX - pointerStart) * 0.55;
+    hotelPhotoRing.style.transform = `rotateY(${rotation}deg)`;
+  });
+
+  function finishHotelDrag(event) {
+    if (pointerStart === null) return;
+    const distance = event.clientX - pointerStart;
+    pointerStart = null;
+    hotelViewer.classList.remove("is-dragging");
+    showHotelPhoto(activePhoto - Math.round(distance / 90));
+  }
+
+  hotelViewer.addEventListener("pointerup", finishHotelDrag);
+  hotelViewer.addEventListener("pointercancel", finishHotelDrag);
+  showHotelPhoto(activePhoto);
+}
 
 const revealElements = document.querySelectorAll(".reveal");
 if ("IntersectionObserver" in window) {
@@ -90,19 +155,104 @@ document.querySelectorAll(".spotlight-card").forEach((card) => {
   });
 });
 
-gameChoice?.addEventListener("change", () => {
-  const isNext = gameChoice.value === "next";
-  gameDetail.innerHTML = `
-    <span class="game-badge">JJ</span>
-    <div><strong>JackJumpers <i>vs</i> ${isNext ? "opponent to be announced" : "your chosen home-game opponent"}</strong><small>${isNext ? "Next home game · date and ticket allocation confirmed with you" : "Future home game · tell us your preferred date in the enquiry"}</small></div>
-  `;
-});
+function showGameDetail() {
+  if (!gameChoice || !gameDetail) return;
 
-reserveButton?.addEventListener("click", () => {
-  reserveMessage.textContent = "Thank you — our Boxwood team will be in touch to confirm your game night.";
-  reserveButton.textContent = "Request received ✓";
-  reserveButton.disabled = true;
-});
+  const selectedOption = gameChoice.selectedOptions[0];
+  if (!selectedOption || selectedOption.value === "future") {
+    setGameDetail(
+      "Ask us about another home game",
+      "Tell us your preferred date in the enquiry and we will check availability.",
+      "https://www.jackjumpers.com.au/schedule"
+    );
+    return;
+  }
+
+  setGameDetail(
+    `JackJumpers vs ${selectedOption.dataset.opponent}`,
+    `${selectedOption.dataset.date} · ${selectedOption.dataset.tipoff} · Home game`,
+    selectedOption.dataset.url
+  );
+}
+
+function setGameDetail(title, description, linkUrl) {
+  if (!gameDetail) return;
+
+  const badge = document.createElement("span");
+  badge.className = "game-badge";
+  badge.textContent = "JJ";
+
+  const details = document.createElement("div");
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  const caption = document.createElement("small");
+  caption.textContent = description;
+  details.append(heading, caption);
+
+  if (linkUrl) {
+    const link = document.createElement("a");
+    link.className = "game-fixture-link";
+    link.href = linkUrl;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = "Official fixture details ↗";
+    details.append(link);
+  }
+
+  gameDetail.replaceChildren(badge, details);
+}
+
+async function loadUpcomingGames() {
+  if (!gameChoice) return;
+
+  try {
+    const response = await fetch(`${apiBase}/api/games`);
+    if (!response.ok) {
+      throw new Error("The official fixture feed is unavailable.");
+    }
+
+    const games = await response.json();
+    gameChoice.replaceChildren();
+
+    games.forEach((game) => {
+      const option = document.createElement("option");
+      option.value = `${game.displayDate} - JackJumpers vs ${game.opponent} - ${game.tipoff}`;
+      option.textContent = `${game.displayDate} · vs ${game.opponent} · ${game.tipoff}`;
+      option.dataset.opponent = game.opponent;
+      option.dataset.date = game.displayDate;
+      option.dataset.tipoff = game.tipoff;
+      option.dataset.url = game.officialUrl;
+      gameChoice.append(option);
+    });
+
+    const futureOption = document.createElement("option");
+    futureOption.value = "future";
+    futureOption.textContent = "Ask about another home game";
+    gameChoice.append(futureOption);
+
+    gameChoice.addEventListener("change", showGameDetail);
+    if (games.length) {
+      showGameDetail();
+    } else {
+      gameChoice.value = "future";
+      setGameDetail(
+        "No upcoming home games are listed",
+        "Check the official fixture for the latest schedule.",
+        "https://www.jackjumpers.com.au/schedule"
+      );
+    }
+  } catch {
+    gameChoice.replaceChildren(new Option("Ask us about an upcoming home game", "future"));
+    gameChoice.addEventListener("change", showGameDetail);
+    setGameDetail(
+      "Live fixtures are temporarily unavailable",
+      "You can still enquire about an upcoming home game or check the official schedule.",
+      "https://www.jackjumpers.com.au/schedule"
+    );
+  }
+}
+
+loadUpcomingGames();
 
 function setFieldError(input, errorElement, message) {
   input.setAttribute("aria-invalid", String(Boolean(message)));
@@ -143,6 +293,12 @@ bookingForm?.addEventListener("submit", async (event) => {
   if (!validateBookingForm()) {
     formStatus.classList.add("is-error");
     formStatus.textContent = "Please check the highlighted details.";
+    return;
+  }
+
+  if (!gameChoice?.value) {
+    formStatus.classList.add("is-error");
+    formStatus.textContent = "Please wait for the official fixtures to load before sending your enquiry.";
     return;
   }
 

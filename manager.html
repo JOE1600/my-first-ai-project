@@ -48,7 +48,7 @@
         const enquiries = await response.json();
         status.textContent = `${enquiries.length} entr${enquiries.length === 1 ? "y" : "ies"} saved.`;
         if (!enquiries.length) { results.innerHTML = '<p class="empty">No enquiries have been submitted yet.</p>'; return; }
-        results.innerHTML = `<table><thead><tr><th>Name</th><th>Email</th><th>Game</th><th>Note</th><th>Received (UTC)</th></tr></thead><tbody>${enquiries.map((item) => `<tr><td>${escapeHtml(item.guestName)}</td><td>${escapeHtml(item.guestEmail)}</td><td>${escapeHtml(item.gameChoice)}</td><td>${escapeHtml(item.guestNote || "")}</td><td>${escapeHtml(item.createdAtUtc)}</td></tr>`).join("")}</tbody></table>`;
+        results.innerHTML = `<table><thead><tr><th>Name</th><th>Email</th><th>Selected match</th><th>Match / stay preferences</th><th>Received (UTC)</th></tr></thead><tbody>${enquiries.map((item) => `<tr><td>${escapeHtml(item.guestName)}</td><td>${escapeHtml(item.guestEmail)}</td><td>${escapeHtml(item.gameChoice)}</td><td>${escapeHtml(item.guestNote || "")}</td><td>${escapeHtml(item.createdAtUtc)}</td></tr>`).join("")}</tbody></table>`;
       } catch (error) {
         status.className = "status error";
         status.textContent = error.message.includes("Failed to fetch") ? "The API is not running or is unreachable." : error.message;

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Caching.Memory;
 
 var builder = WebApplication.CreateBuilder(args);
 var databaseDirectory = Path.Combine(builder.Environment.ContentRootPath, "app_data");
@@ -15,12 +16,56 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod());
 });
 
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("JackJumpers", client =>
+{
+    client.BaseAddress = new Uri("https://www.jackjumpers.com.au");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("BoxwoodStayAndPlay/1.0");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+
 var app = builder.Build();
 app.UseCors("Frontend");
 
 await InitialiseDatabaseAsync(connectionString);
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+
+app.MapGet("/api/games", async (
+    IHttpClientFactory clients,
+    IMemoryCache cache,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        var games = await cache.GetOrCreateAsync("jackjumpers-upcoming-home-games", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15);
+            using var response = await clients.CreateClient("JackJumpers")
+                .GetAsync("/schedule", cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            var scheduleHtml = await response.Content.ReadAsStringAsync(cancellationToken);
+            return JackJumpersSchedule.ParseUpcomingHomeGames(scheduleHtml, DateTime.UtcNow.Date);
+        });
+
+        return Results.Ok(games ?? Array.Empty<UpcomingGame>());
+    }
+    catch (HttpRequestException exception)
+    {
+        app.Logger.LogError(exception, "Unable to retrieve the JackJumpers schedule.");
+        return Results.Problem(
+            "The JackJumpers schedule is temporarily unavailable. Please use the official fixture link.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+    {
+        app.Logger.LogError(exception, "The JackJumpers schedule request timed out.");
+        return Results.Problem(
+            "The JackJumpers schedule request timed out. Please use the official fixture link.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
 
 app.MapGet("/api/enquiries", async (HttpRequest request) =>
 {
@@ -118,9 +163,10 @@ static Dictionary<string, string[]> ValidateRequest(EnquiryRequest request)
         errors["guestNote"] = new[] { "Your note must be 400 characters or fewer." };
     }
 
-    if (request.GameChoice is not ("next" or "future"))
+    if (request.GameChoice is not ("next" or "future")
+        && (request.GameChoice.Length is < 3 or > 180))
     {
-        errors["gameChoice"] = new[] { "Please select a valid game option." };
+        errors["gameChoice"] = new[] { "Please select a listed game or enquire about another home game." };
     }
 
     return errors;
@@ -189,3 +235,11 @@ public sealed record EnquiryResponse(
     string? GuestNote,
     string GameChoice,
     string CreatedAtUtc);
+
+public sealed record UpcomingGame(
+    string Id,
+    string Opponent,
+    string GameDate,
+    string Tipoff,
+    string DisplayDate,
+    string OfficialUrl);

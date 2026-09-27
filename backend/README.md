@@ -4,6 +4,7 @@ This is the simplest local backend for the Boxwood x Islington x JackJumpers pag
 
 - ASP.NET Core Minimal API
 - SQLite database stored at `backend/app_data/boxwood.db`
+- `GET /api/games` for upcoming JackJumpers home fixtures, read from the official schedule and cached for 15 minutes
 - `POST /api/enquiries` for website enquiries
 - `GET /api/enquiries` for authorised manager access
 - `GET /api/health` for a health check
@@ -17,6 +18,7 @@ BOXWOOD_ADMIN_API_KEY="replace-with-a-local-secret" dotnet run --urls http://loc
 ```
 
 Then open the parent `index.html` in a browser or serve the parent folder with a local static server. The frontend sends enquiries to `http://localhost:5050` by default.
+The live game picker also reads `GET /api/games`; the API needs outbound HTTPS access to `www.jackjumpers.com.au` for the latest fixture list.
 
 To use another API host, define `window.BOXWOOD_API_BASE` before `script.js` loads.
 
