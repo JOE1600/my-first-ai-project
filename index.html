@@ -4,14 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stay & Play | Boxwood x Islington Hotel</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' https://cdn.prod.website-files.com; connect-src 'self' http://localhost:5050; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <meta name="description" content="Stay & Play — a luxury Hobart package combining an Islington Hotel stay with a JackJumpers home-game experience." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260927-hotel" />
-    <link rel="stylesheet" href="hotel-explorer.css?v=20260927-hotel" />
-    <script src="https://unpkg.com/lenis@1.3.8/dist/lenis.min.js" defer></script>
-    <script src="script.js?v=20260927-hotel" defer></script>
+    <link rel="preload" href="assets/fonts/dm-sans-normal-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/playfair-display-normal-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="assets/fonts.css?v=20260927-secure" />
+    <link rel="stylesheet" href="styles.css?v=20260927-secure" />
+    <link rel="stylesheet" href="hotel-explorer.css?v=20260927-secure" />
+    <script src="assets/vendor/lenis.min.js" defer></script>
+    <script src="config.js?v=20260927-live" defer></script>
+    <script src="script.js?v=20260927-live" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -33,7 +37,7 @@
           <div class="arc arc-two"></div>
           <div class="court-line"></div>
         </div>
-        <div class="hero-copy reveal">
+        <div class="hero-copy reveal is-visible">
           <p class="eyebrow">Hobart · Tasmania · Stay & Play</p>
           <h1>Stay<br /><em>&amp; play.</em></h1>
           <p class="hero-intro">A luxury Hobart escape that pairs an Islington Hotel stay with the electricity of a JackJumpers home game — crafted for guests who want the best of sport, hospitality and slow evenings together.</p>
@@ -52,7 +56,7 @@
           <a class="text-link" href="#included">See what awaits <span>↗</span></a>
         </div>
         <div class="islington-card">
-          <img src="assets/islington/islington-exterior.webp" alt="Islington Hotel exterior among its gardens with Mount Wellington beyond" />
+          <img src="assets/islington/islington-exterior.webp" alt="Islington Hotel exterior among its gardens with Mount Wellington beyond" srcset="assets/islington/islington-exterior-480.webp 480w, assets/islington/islington-exterior-800.webp 800w, assets/islington/islington-exterior.webp 933w" sizes="(max-width: 850px) 100vw, 40vw" width="933" height="1400" loading="lazy" decoding="async" />
           <p>“A house with a heart<br />in South Hobart.”</p>
           <span>ISLINGTON HOTEL</span>
         </div>
@@ -78,23 +82,23 @@
           <div class="hotel-viewer-scene">
             <div class="hotel-photo-ring" id="hotel-photo-ring">
               <figure class="hotel-photo-card" data-title="The house & gardens" data-description="A private Hobart house with Mount Wellington in view.">
-                <img src="assets/islington/islington-exterior.webp" alt="Islington Hotel exterior and garden, with Mount Wellington in the distance" />
+                <img src="assets/islington/islington-exterior.webp" alt="Islington Hotel exterior and garden, with Mount Wellington in the distance" srcset="assets/islington/islington-exterior-480.webp 480w, assets/islington/islington-exterior-800.webp 800w, assets/islington/islington-exterior.webp 933w" sizes="(max-width: 850px) 70vw, 470px" width="933" height="1400" loading="lazy" decoding="async" />
                 <figcaption>ISLINGTON · HOBART</figcaption>
               </figure>
               <figure class="hotel-photo-card" data-title="The Courtyard Suite" data-description="Stone, timber and a quiet corner to settle into.">
-                <img src="assets/islington/courtyard-suite.webp" alt="The Courtyard Suite sitting room with heritage stone wall and warm timber" />
+                <img src="assets/islington/courtyard-suite.webp" alt="The Courtyard Suite sitting room with heritage stone wall and warm timber" srcset="assets/islington/courtyard-suite-480.webp 480w, assets/islington/courtyard-suite-800.webp 800w, assets/islington/courtyard-suite.webp 1800w" sizes="(max-width: 850px) 70vw, 470px" width="1800" height="1391" loading="lazy" decoding="async" />
                 <figcaption>THE COURTYARD SUITE</figcaption>
               </figure>
               <figure class="hotel-photo-card" data-title="The Garden Suite" data-description="Unhurried mornings, garden light and a glass shared.">
-                <img src="assets/islington/garden-suite.webp" alt="The Garden Suite lounge with a Tasmanian garden view" />
+                <img src="assets/islington/garden-suite.webp" alt="The Garden Suite lounge with a Tasmanian garden view" srcset="assets/islington/garden-suite-480.webp 480w, assets/islington/garden-suite-800.webp 800w, assets/islington/garden-suite.webp 1120w" sizes="(max-width: 850px) 70vw, 470px" width="1120" height="1400" loading="lazy" decoding="async" />
                 <figcaption>THE GARDEN SUITE</figcaption>
               </figure>
               <figure class="hotel-photo-card" data-title="The Wellington Room" data-description="A considered room framed by soft light and mountain views.">
-                <img src="assets/islington/wellington-room.webp" alt="The Wellington Room with a king bed and soft morning light" />
+                <img src="assets/islington/wellington-room.webp" alt="The Wellington Room with a king bed and soft morning light" srcset="assets/islington/wellington-room-480.webp 480w, assets/islington/wellington-room-800.webp 800w, assets/islington/wellington-room.webp 1800w" sizes="(max-width: 850px) 70vw, 470px" width="1800" height="1200" loading="lazy" decoding="async" />
                 <figcaption>THE WELLINGTON ROOM</figcaption>
               </figure>
               <figure class="hotel-photo-card" data-title="The Signature Room" data-description="A distinctive retreat with art, colour and thoughtful detail.">
-                <img src="assets/islington/signature-room.webp" alt="The Signature Room with a king bed and colourful Tasmanian artwork" />
+                <img src="assets/islington/signature-room.webp" alt="The Signature Room with a king bed and colourful Tasmanian artwork" srcset="assets/islington/signature-room-480.webp 480w, assets/islington/signature-room-800.webp 800w, assets/islington/signature-room.webp 1800w" sizes="(max-width: 850px) 70vw, 470px" width="1800" height="1200" loading="lazy" decoding="async" />
                 <figcaption>THE SIGNATURE ROOM</figcaption>
               </figure>
             </div>
@@ -112,7 +116,7 @@
         </div>
         <div class="game-picker">
           <figure class="game-photo">
-            <img src="https://cdn.prod.website-files.com/689d6c46a57191b7ca73fe9d/6ab3ca2bf5774112c0fec5bf_Dakota%20Mathias.jpg" alt="JackJumpers player Dakota Mathias during official game coverage" loading="lazy" />
+            <img src="https://cdn.prod.website-files.com/689d6c46a57191b7ca73fe9d/6ab3ca2bf5774112c0fec5bf_Dakota%20Mathias-p-800.jpg" srcset="https://cdn.prod.website-files.com/689d6c46a57191b7ca73fe9d/6ab3ca2bf5774112c0fec5bf_Dakota%20Mathias-p-500.jpg 500w, https://cdn.prod.website-files.com/689d6c46a57191b7ca73fe9d/6ab3ca2bf5774112c0fec5bf_Dakota%20Mathias-p-800.jpg 800w, https://cdn.prod.website-files.com/689d6c46a57191b7ca73fe9d/6ab3ca2bf5774112c0fec5bf_Dakota%20Mathias-p-1080.jpg 1080w" sizes="(max-width: 850px) 100vw, 480px" alt="JackJumpers player Dakota Mathias during official game coverage" loading="lazy" decoding="async" />
             <figcaption>Official JackJumpers game coverage</figcaption>
           </figure>
           <label for="game-choice">Choose your JackJumpers home game</label>
@@ -152,7 +156,7 @@
 
       <section class="fireside-section reveal" aria-labelledby="fireside-title">
         <div class="fireside-image">
-          <img src="assets/islington/lounge.webp" alt="A warmly lit Islington suite set for a relaxed evening with wine and Tasmanian produce" />
+          <img src="assets/islington/lounge.webp" alt="A warmly lit Islington suite set for a relaxed evening with wine and Tasmanian produce" srcset="assets/islington/lounge-480.webp 480w, assets/islington/lounge-800.webp 800w, assets/islington/lounge.webp 933w" sizes="(max-width: 850px) 100vw, 50vw" width="933" height="1400" loading="lazy" decoding="async" />
           <span class="image-caption">The evening continues at Islington</span>
         </div>
         <div class="fireside-copy">
@@ -210,6 +214,10 @@
             <label for="guest-note">Any preferences for the match or your stay? <span>(optional)</span></label>
             <textarea id="guest-note" name="guestNote" rows="3" maxlength="400"></textarea>
             <span class="input-hint"><span id="note-count">0</span>/400 characters</span>
+          </div>
+          <div class="field-trap" aria-hidden="true">
+            <label for="guest-website">Leave this field empty</label>
+            <input id="guest-website" name="website" tabindex="-1" autocomplete="off" />
           </div>
           <button class="button button-gold" type="submit">Send a private enquiry <span>↗</span></button>
           <p class="form-status" id="form-status" role="status" aria-live="polite"></p>

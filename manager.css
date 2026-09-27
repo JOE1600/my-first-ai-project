@@ -1,0 +1,14 @@
+:root { color-scheme: light; font-family: Arial, sans-serif; background: #f4f1eb; color: #17211d; }
+body { max-width: 1100px; margin: 0 auto; padding: 32px 18px; }
+h1 { color: #174b3b; font-family: Georgia, serif; font-weight: 500; }
+form, .status, table { background: #fff; border: 1px solid #d9d2c5; border-radius: 8px; padding: 16px; }
+form { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+label { display: grid; gap: 6px; font-size: 13px; }
+input, button { min-height: 40px; border: 1px solid #aaa396; border-radius: 5px; padding: 0 10px; font: inherit; }
+input { min-width: 280px; } button { background: #174b3b; color: #fff; border-color: #174b3b; cursor: pointer; }
+.status { margin: 16px 0; } .error { color: #9d2525; } .empty { color: #5d6b64; }
+table { width: 100%; border-collapse: collapse; padding: 0; overflow: hidden; }
+th, td { text-align: left; vertical-align: top; border-bottom: 1px solid #e4ded4; padding: 12px 10px; font-size: 14px; }
+th { color: #174b3b; background: #f6f2ea; } td { white-space: pre-wrap; }
+@media (max-width: 700px) { body { padding: 20px 10px; } input { min-width: 100%; } form { display: grid; } table { display: block; overflow-x: auto; white-space: nowrap; } }
+  

@@ -3,3 +3,8 @@ obj/
 app_data/*.db
 app_data/*.db-shm
 app_data/*.db-wal
+.env
+.env.*
+*.pem
+*.pfx
+app_data/backups/

@@ -4,13 +4,15 @@ const bookingForm = document.querySelector("#booking-form");
 const guestName = document.querySelector("#guest-name");
 const guestEmail = document.querySelector("#guest-email");
 const guestNote = document.querySelector("#guest-note");
+const guestWebsite = document.querySelector("#guest-website");
 const formStatus = document.querySelector("#form-status");
 const noteCount = document.querySelector("#note-count");
 const gameChoice = document.querySelector("#game-choice");
 const gameDetail = document.querySelector("#game-detail");
 const hotelViewer = document.querySelector("#hotel-viewer");
 const hotelPhotoRing = document.querySelector("#hotel-photo-ring");
-const apiBase = window.BOXWOOD_API_BASE || "http://localhost:5050";
+const apiBase = (window.BOXWOOD_API_BASE ?? "http://localhost:5050").replace(/\/$/, "");
+const enquiriesOpen = apiBase !== "";
 
 const clientRateLimit = {
   lastSubmission: 0,
@@ -91,16 +93,28 @@ if (hotelViewer && hotelPhotoRing) {
     hotelViewer.setPointerCapture(event.pointerId);
   });
 
+  let dragFrame = 0;
+  let dragX = 0;
+
+  // Pointer events can fire several times per frame; only write the transform once per frame.
   hotelViewer.addEventListener("pointermove", (event) => {
     if (pointerStart === null) return;
-    const rotation = -activePhoto * 72 + (event.clientX - pointerStart) * 0.55;
-    hotelPhotoRing.style.transform = `rotateY(${rotation}deg)`;
+    dragX = event.clientX;
+    if (dragFrame) return;
+    dragFrame = window.requestAnimationFrame(() => {
+      dragFrame = 0;
+      if (pointerStart === null) return;
+      const rotation = -activePhoto * 72 + (dragX - pointerStart) * 0.55;
+      hotelPhotoRing.style.transform = `rotateY(${rotation}deg)`;
+    });
   });
 
   function finishHotelDrag(event) {
     if (pointerStart === null) return;
     const distance = event.clientX - pointerStart;
     pointerStart = null;
+    window.cancelAnimationFrame(dragFrame);
+    dragFrame = 0;
     hotelViewer.classList.remove("is-dragging");
     showHotelPhoto(activePhoto - Math.round(distance / 90));
   }
@@ -132,24 +146,37 @@ if ("IntersectionObserver" in window) {
   revealElements.forEach((element) => element.classList.add("is-visible"));
 }
 
-window.setTimeout(() => {
-  document.querySelector(".hero-copy")?.classList.add("is-visible");
-}, 120);
-
 document.querySelectorAll(".spotlight-card").forEach((card) => {
+  let bounds = null;
+  let frame = 0;
+  let pointer = { x: 0, y: 0 };
+
+  // Measure once on entry rather than on every move, and batch style writes per frame.
+  card.addEventListener("pointerenter", () => {
+    bounds = card.getBoundingClientRect();
+  });
+
   card.addEventListener("pointermove", (event) => {
-    const bounds = card.getBoundingClientRect();
-    const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
-    const tiltX = ((x / bounds.width) - 0.5) * 3;
-    const tiltY = ((y / bounds.height) - 0.5) * -3;
-    card.style.setProperty("--spot-x", `${x}px`);
-    card.style.setProperty("--spot-y", `${y}px`);
-    card.style.setProperty("--tilt-x", `${tiltX}deg`);
-    card.style.setProperty("--tilt-y", `${tiltY}deg`);
+    pointer = { x: event.clientX, y: event.clientY };
+    if (frame) return;
+    frame = window.requestAnimationFrame(() => {
+      frame = 0;
+      bounds ??= card.getBoundingClientRect();
+      const x = pointer.x - bounds.left;
+      const y = pointer.y - bounds.top;
+      const tiltX = ((x / bounds.width) - 0.5) * 3;
+      const tiltY = ((y / bounds.height) - 0.5) * -3;
+      card.style.setProperty("--spot-x", `${x}px`);
+      card.style.setProperty("--spot-y", `${y}px`);
+      card.style.setProperty("--tilt-x", `${tiltX}deg`);
+      card.style.setProperty("--tilt-y", `${tiltY}deg`);
+    });
   });
 
   card.addEventListener("pointerleave", () => {
+    window.cancelAnimationFrame(frame);
+    frame = 0;
+    bounds = null;
     card.style.removeProperty("--tilt-x");
     card.style.removeProperty("--tilt-y");
   });
@@ -206,6 +233,10 @@ async function loadUpcomingGames() {
   if (!gameChoice) return;
 
   try {
+    if (!enquiriesOpen) {
+      throw new Error("The enquiry service is not configured.");
+    }
+
     const response = await fetch(`${apiBase}/api/games`);
     if (!response.ok) {
       throw new Error("The official fixture feed is unavailable.");
@@ -253,6 +284,13 @@ async function loadUpcomingGames() {
 }
 
 loadUpcomingGames();
+
+if (!enquiriesOpen && bookingForm) {
+  bookingForm.querySelectorAll("input, textarea, button").forEach((control) => {
+    control.disabled = true;
+  });
+  formStatus.textContent = "Online enquiries open soon. Please check back shortly.";
+}
 
 function setFieldError(input, errorElement, message) {
   input.setAttribute("aria-invalid", String(Boolean(message)));
@@ -324,12 +362,17 @@ bookingForm?.addEventListener("submit", async (event) => {
         guestEmail: guestEmail.value.trim(),
         guestNote: guestNote.value.trim(),
         gameChoice: gameChoice?.value || "next",
+        website: guestWebsite?.value || "",
       }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.title || "The enquiry could not be sent.");
+      const fieldError = error.errors && Object.values(error.errors).flat()[0];
+      if (response.status === 429) {
+        throw new Error(error.detail || "Too many attempts. Please wait a minute and try again.");
+      }
+      throw new Error(fieldError || error.detail || "The enquiry could not be sent.");
     }
 
     formStatus.textContent = "Thank you — your enquiry has been received. The Boxwood team will be in touch.";
@@ -339,7 +382,7 @@ bookingForm?.addEventListener("submit", async (event) => {
     clientRateLimit.lastSubmission = 0;
     formStatus.classList.add("is-error");
     formStatus.textContent = error.message.includes("Failed to fetch")
-      ? "The booking service is not running. Start the backend and try again."
+      ? "We couldn't reach the booking service. Please try again in a few minutes."
       : error.message;
     submitButton.disabled = false;
   } finally {
