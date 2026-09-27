@@ -5,7 +5,8 @@ services:
     name: boxwood-api
     runtime: docker
     plan: free
-    region: singapore
+    # Same region as the Neon database (us-east-2), because each enquiry makes several database round trips.
+    region: ohio
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
