@@ -3,6 +3,9 @@ name: Deploy site to GitHub Pages
 on:
   push:
     branches: ["main"]
+  # Redeploy every 6 hours so fixtures.json follows changes to the official schedule.
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -33,6 +36,15 @@ jobs:
           cp index.html script.js styles.css hotel-explorer.css _site/
           cp -R assets _site/
           cp BOXWOOD-PROJECT-ROADMAP.html BOXWOOD-PROJECT-ROADMAP.pdf BOXWOOD-AGILE-CYCLE-SUMMARY.pdf _site/
+      # fixtures.json lists upcoming home games for the match picker, built with the API's own
+      # parser. If the official site is down the step is skipped and the page shows its fallback.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Publish upcoming fixtures
+        continue-on-error: true
+        run: dotnet run --project backend/backend.csproj --no-launch-profile -c Release -p:BoxwoodTargetFramework=net10.0 -- --export-fixtures "$GITHUB_WORKSPACE/_site/fixtures.json"
       # config.js tells the page where the enquiry API lives. It comes from the BOXWOOD_API_BASE
       # repository variable; when that is empty the page shows "Online enquiries open soon".
       - name: Point the site at the enquiry API

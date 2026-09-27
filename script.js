@@ -229,20 +229,34 @@ function setGameDetail(title, description, linkUrl) {
   gameDetail.replaceChildren(badge, details);
 }
 
+// The live API is preferred. Without one (or if it is down), fall back to fixtures.json, which the
+// GitHub Pages workflow regenerates from the official schedule every few hours.
+async function fetchUpcomingGames() {
+  if (enquiriesOpen) {
+    try {
+      const response = await fetch(`${apiBase}/api/games`);
+      if (response.ok) return await response.json();
+    } catch {
+      // Fall through to the published fixture list.
+    }
+  }
+
+  const response = await fetch("fixtures.json", { cache: "no-cache" });
+  if (!response.ok) {
+    throw new Error("The official fixture feed is unavailable.");
+  }
+
+  // The file can be a few hours old, so drop games that have already been played (Hobart date).
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Hobart" }).format(new Date());
+  const games = await response.json();
+  return Array.isArray(games) ? games.filter((game) => game.gameDate >= today) : [];
+}
+
 async function loadUpcomingGames() {
   if (!gameChoice) return;
 
   try {
-    if (!enquiriesOpen) {
-      throw new Error("The enquiry service is not configured.");
-    }
-
-    const response = await fetch(`${apiBase}/api/games`);
-    if (!response.ok) {
-      throw new Error("The official fixture feed is unavailable.");
-    }
-
-    const games = await response.json();
+    const games = await fetchUpcomingGames();
     gameChoice.replaceChildren();
 
     games.forEach((game) => {

@@ -3,6 +3,14 @@ using System.Net;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Data.Sqlite;
 
+// `dotnet run -- --export-fixtures <file>` writes the upcoming home games as JSON and exits.
+// The GitHub Pages workflow uses it to publish fixtures.json, so the static site can list
+// matches even when no API is hosted.
+if (args.Length == 2 && args[0] == "--export-fixtures")
+{
+    return await FixtureExport.RunAsync(args[1]);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 // On a server, BOXWOOD_DATA_DIR points at a persistent disk (the Docker image uses /data) so the
 // database and its backups survive restarts and redeploys. Locally it defaults to backend/app_data.
@@ -286,6 +294,7 @@ app.MapPost("/api/enquiries", async (
 });
 
 app.Run();
+return 0;
 
 static Dictionary<string, string[]> ValidateRequest(EnquiryRequest request)
 {
