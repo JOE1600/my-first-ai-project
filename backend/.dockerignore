@@ -1,0 +1,12 @@
+bin/
+obj/
+app_data/
+Properties/
+Dockerfile
+.dockerignore
+.env
+.env.*
+*.env
+*.pem
+*.pfx
+appsettings.Development.json

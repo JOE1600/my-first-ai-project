@@ -144,7 +144,11 @@ public sealed class GuestDataCipher
         }
 
         var plaintext = new byte[payload.Length - GcmNonceSize - GcmTagSize];
+#if NET8_0_OR_GREATER
+        using var aes = new AesGcm(gcmKey!, GcmTagSize);
+#else
         using var aes = new AesGcm(gcmKey!);
+#endif
         aes.Decrypt(
             payload.AsSpan(0, GcmNonceSize),
             payload.AsSpan(GcmNonceSize + GcmTagSize),
@@ -168,15 +172,22 @@ public static class GuestDataStore
             return;
         }
 
+#if NET7_0_OR_GREATER
+        var ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        File.SetUnixFileMode(path, Directory.Exists(path) ? ownerOnly | UnixFileMode.UserExecute : ownerOnly);
+#else
         // .NET 6 has no File.SetUnixFileMode, so call chmod directly. Octal 700 = 448, 600 = 384.
         if (chmod(path, Directory.Exists(path) ? 448 : 384) != 0)
         {
             throw new IOException($"Could not restrict permissions on {path} (errno {Marshal.GetLastWin32Error()}).");
         }
+#endif
     }
 
+#if !NET7_0_OR_GREATER
     [DllImport("libc", SetLastError = true)]
     private static extern int chmod(string path, int mode);
+#endif
 
     public static void RestrictDatabaseFiles(string databasePath)
     {

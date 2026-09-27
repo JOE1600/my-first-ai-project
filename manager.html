@@ -3,23 +3,71 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' http://localhost:5050; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <!-- connect-src allows any HTTPS API so the same page works against the hosted API. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self' http://localhost:5050 https:; img-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
-  <title>Boxwood enquiry manager</title>
+  <title>Enquiry manager | Boxwood</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="manager.css">
-  <script src="manager.js" defer></script>
+  <link rel="stylesheet" href="assets/fonts.css">
+  <link rel="stylesheet" href="manager.css?v=20260927-manager">
+  <script src="manager.js?v=20260927-manager" defer></script>
 </head>
 <body>
-  <h1>Boxwood enquiry manager</h1>
-  <p>Private read-only view of enquiries saved by the game-night website.</p>
-  <form id="manager-form">
-    <label>API address <input id="api-base" value="http://localhost:5050" required></label>
-    <label>Manager key <input id="admin-key" type="password" autocomplete="current-password" required></label>
-    <button type="submit">Load enquiries</button>
-  </form>
-  <p class="status" id="status" role="status" aria-live="polite">Enter the manager key to load saved enquiries.</p>
-  <div id="results"></div>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <p class="wordmark">BOXWOOD <span>+</span> ISLINGTON</p>
+      <h1>Enquiry <em>manager</em></h1>
+      <p class="masthead-note">Private view of Stay &amp; Play game-night enquiries. Staff only.</p>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="panel connect" aria-labelledby="connect-title">
+      <div class="connect-copy">
+        <h2 id="connect-title">Connect</h2>
+        <p>The API address is remembered on this device. The manager key is never saved and is cleared when you lock the page or after 30 minutes without activity.</p>
+      </div>
+      <form id="manager-form" class="connect-form">
+        <label class="field">API address
+          <input id="api-base" type="url" value="http://localhost:5050" autocomplete="url" spellcheck="false" required>
+        </label>
+        <label class="field">Manager key
+          <input id="admin-key" type="password" autocomplete="current-password" spellcheck="false" required>
+        </label>
+        <div class="connect-actions">
+          <button class="button button-primary" type="submit" id="load-button">Load enquiries</button>
+          <button class="button button-quiet" type="button" id="lock-button" hidden>Lock</button>
+        </div>
+      </form>
+      <p class="status" id="status" role="status" aria-live="polite">Enter the manager key to load saved enquiries.</p>
+    </section>
+
+    <section id="dashboard" class="dashboard" hidden aria-label="Enquiries">
+      <div class="stats">
+        <div class="stat"><span class="stat-label">Total enquiries</span><strong id="stat-total">0</strong></div>
+        <div class="stat"><span class="stat-label">Last 7 days</span><strong id="stat-week">0</strong></div>
+        <div class="stat stat-wide"><span class="stat-label">Most requested match</span><strong id="stat-match">–</strong></div>
+      </div>
+
+      <div class="toolbar">
+        <label class="field field-search">Search
+          <input id="search" type="search" placeholder="Name, email or note" autocomplete="off">
+        </label>
+        <label class="field">Match
+          <select id="match-filter"><option value="">All matches</option></select>
+        </label>
+        <div class="toolbar-actions">
+          <button class="button button-quiet" type="button" id="refresh-button">Refresh</button>
+          <button class="button button-quiet" type="button" id="export-button">Export CSV</button>
+        </div>
+      </div>
+
+      <p class="result-count" id="result-count" aria-live="polite"></p>
+      <div id="results"></div>
+    </section>
+  </main>
+
+  <footer class="page-footer">Guest details are confidential. Do not forward exported files outside Boxwood.</footer>
 </body>
 </html>

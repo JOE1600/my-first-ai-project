@@ -8,3 +8,4 @@ app_data/*.db-wal
 *.pem
 *.pfx
 app_data/backups/
+*.env

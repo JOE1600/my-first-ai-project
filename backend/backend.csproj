@@ -1,13 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <!-- The development Mac only has the .NET 6 SDK, so local builds stay on net6.0.
+         The Dockerfile builds the same code for a supported runtime with -p:BoxwoodTargetFramework=net10.0
+         (a custom property, because NuGet restore ignores -p:TargetFramework). -->
+    <BoxwoodTargetFramework Condition="'$(BoxwoodTargetFramework)' == ''">net6.0</BoxwoodTargetFramework>
+    <TargetFramework>$(BoxwoodTargetFramework)</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- SQLite itself ships in this native bundle. 2.1.11 and older carry a high-severity SQLite
+       vulnerability (GHSA-2m69-gcr7-jv3q), so pin a patched build for every target. -->
   <ItemGroup>
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
     <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.36" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net6.0'">
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
   </ItemGroup>
 
 </Project>
