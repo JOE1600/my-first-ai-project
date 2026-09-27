@@ -27,7 +27,9 @@ const relativeTime = new Intl.RelativeTimeFormat("en-AU", { numeric: "auto" });
 let enquiries = [];
 let idleTimer = 0;
 
-// Only the API address is remembered. The manager key stays in memory for this tab.
+// Default to the API the website itself uses (config.js); a manually entered address is remembered
+// on this device. The manager key stays in memory for this tab only.
+apiInput.value = window.BOXWOOD_API_BASE || "http://localhost:5050";
 try {
   const savedApi = localStorage.getItem(API_STORAGE_KEY);
   if (savedApi) apiInput.value = savedApi;
@@ -56,6 +58,9 @@ async function loadEnquiries() {
 
   setStatus("Loading enquiries…");
   loadButton.disabled = true;
+  const slowNotice = window.setTimeout(() => {
+    setStatus("Still loading — the API is starting up after being idle, which can take up to a minute.");
+  }, 6000);
   try {
     const response = await fetch(`${apiBase}/api/enquiries`, {
       headers: { "X-Admin-Key": keyInput.value },
@@ -86,6 +91,7 @@ async function loadEnquiries() {
     const unreachable = error instanceof TypeError;
     setStatus(unreachable ? "The API is not running or is unreachable at that address." : error.message, true);
   } finally {
+    window.clearTimeout(slowNotice);
     loadButton.disabled = false;
   }
 }

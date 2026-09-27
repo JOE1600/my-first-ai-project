@@ -1,0 +1,57 @@
+# Render Blueprint for the Boxwood enquiry API (free plan).
+# Render dashboard -> New -> Blueprint -> pick this repository. See backend/README.md.
+services:
+  - type: web
+    name: boxwood-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      # The container listens on 8080; this tells Render where to send traffic.
+      - key: PORT
+        value: "8080"
+      # Render generates both keys once (random, 256-bit, base64). Read the manager key in the
+      # dashboard under Environment. Never regenerate BOXWOOD_DATA_KEY: stored enquiries need it.
+      - key: BOXWOOD_ADMIN_API_KEY
+        generateValue: true
+      - key: BOXWOOD_DATA_KEY
+        generateValue: true
+      # Pasted in the dashboard when the Blueprint is created (never committed).
+      - key: BOXWOOD_DATABASE_URL
+        sync: false
+      - key: BOXWOOD_RESEND_API_KEY
+        sync: false
+      - key: Email__From
+        sync: false
+      - key: Email__ManagerAddress
+        sync: false
+      - key: Email__ManagerPageUrl
+        value: https://joe1600.github.io/my-first-ai-project/manager.html
+      # The website on GitHub Pages, plus the manager page when run from a laptop.
+      - key: Security__AllowedOrigins__0
+        value: https://joe1600.github.io
+      - key: Security__AllowedOrigins__1
+        value: http://localhost:8080
+      # Render's load balancer sits behind Cloudflare. Trust only private networks (where Render's
+      # proxy connects from) and take the visitor's address from Cloudflare's single-value header.
+      - key: Security__ClientIpHeader
+        value: CF-Connecting-IP
+      - key: Security__TrustedNetworks__0
+        value: 10.0.0.0/8
+      - key: Security__TrustedNetworks__1
+        value: 172.16.0.0/12
+      - key: Security__TrustedNetworks__2
+        value: 192.168.0.0/16
+      - key: Security__TrustedNetworks__3
+        value: 100.64.0.0/10
+      # Render routes by hostname before requests reach the app, and its health checks do not use
+      # the public hostname, so host filtering is left to Render.
+      - key: AllowedHosts
+        value: "*"

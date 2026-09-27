@@ -28,12 +28,12 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
-      # Publish only the public website. The backend source, the staff manager page and
-      # anything else in the repo stay out of the public site.
+      # Publish only the website and the staff manager page. The manager page holds no data:
+      # enquiries only load with the manager key. Backend source and docs stay out of the site.
       - name: Assemble public site
         run: |
           mkdir _site
-          cp index.html script.js styles.css hotel-explorer.css _site/
+          cp index.html script.js styles.css hotel-explorer.css manager.html manager.js manager.css _site/
           cp -R assets _site/
           cp BOXWOOD-PROJECT-ROADMAP.html BOXWOOD-PROJECT-ROADMAP.pdf BOXWOOD-AGILE-CYCLE-SUMMARY.pdf _site/
       # fixtures.json lists upcoming home games for the match picker, built with the API's own

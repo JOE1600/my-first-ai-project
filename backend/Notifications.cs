@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Net.Http.Json;
 using System.Net.Mail;
 using System.Text;
 using System.Threading.Channels;
@@ -15,16 +16,22 @@ public sealed class EmailOptions
     public string ManagerPageUrl { get; init; } = string.Empty;
     public string TimeZone { get; init; } = "Australia/Hobart";
 
+    /// <summary>
+    /// Set from BOXWOOD_RESEND_API_KEY, never from appsettings. When present, email goes through
+    /// Resend's HTTPS API instead of SMTP (some free hosts block outgoing SMTP ports).
+    /// </summary>
+    public string? ResendApiKey { get; set; }
+
+    private bool HasTransport => !string.IsNullOrWhiteSpace(SmtpHost) || !string.IsNullOrWhiteSpace(ResendApiKey);
+
     public bool IsConfigured =>
-        !string.IsNullOrWhiteSpace(SmtpHost)
+        HasTransport
         && !string.IsNullOrWhiteSpace(From)
         && !string.IsNullOrWhiteSpace(ManagerAddress);
 
     public bool IsPartlyConfigured =>
         !IsConfigured
-        && !(string.IsNullOrWhiteSpace(SmtpHost)
-            && string.IsNullOrWhiteSpace(From)
-            && string.IsNullOrWhiteSpace(ManagerAddress));
+        && (HasTransport || !string.IsNullOrWhiteSpace(From) || !string.IsNullOrWhiteSpace(ManagerAddress));
 }
 
 public sealed record EnquiryNotification(
@@ -50,10 +57,17 @@ public sealed class EnquiryNotifier : BackgroundService
     private readonly TimeZoneInfo timeZone;
     private readonly ILogger<EnquiryNotifier> logger;
 
-    public EnquiryNotifier(EmailOptions options, string? smtpPassword, ILogger<EnquiryNotifier> logger)
+    private readonly IHttpClientFactory httpClients;
+
+    public EnquiryNotifier(
+        EmailOptions options,
+        string? smtpPassword,
+        IHttpClientFactory httpClients,
+        ILogger<EnquiryNotifier> logger)
     {
         this.options = options;
         this.smtpPassword = smtpPassword;
+        this.httpClients = httpClients;
         this.logger = logger;
         try
         {
@@ -107,7 +121,39 @@ public sealed class EnquiryNotifier : BackgroundService
         }
     }
 
-    private async Task SendAsync(EnquiryNotification notification, CancellationToken cancellationToken)
+    private string[] ManagerAddresses() =>
+        options.ManagerAddress.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private Task SendAsync(EnquiryNotification notification, CancellationToken cancellationToken) =>
+        string.IsNullOrWhiteSpace(options.ResendApiKey)
+            ? SendSmtpAsync(notification, cancellationToken)
+            : SendResendAsync(notification, cancellationToken);
+
+    private async Task SendResendAsync(EnquiryNotification notification, CancellationToken cancellationToken)
+    {
+        var client = httpClients.CreateClient("Resend");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails")
+        {
+            Content = JsonContent.Create(new
+            {
+                from = $"Boxwood enquiries <{options.From}>",
+                to = ManagerAddresses(),
+                reply_to = notification.GuestEmail,
+                subject = $"New game-night enquiry #{notification.Id}",
+                text = BuildBody(notification),
+            }),
+        };
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ResendApiKey);
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            // Resend explains the problem (unverified sender, bad key) in the body; it holds no guest data.
+            var detail = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException($"Resend returned {(int)response.StatusCode}: {detail[..Math.Min(detail.Length, 300)]}");
+        }
+    }
+
+    private async Task SendSmtpAsync(EnquiryNotification notification, CancellationToken cancellationToken)
     {
         using var message = new MailMessage
         {
@@ -119,7 +165,7 @@ public sealed class EnquiryNotifier : BackgroundService
             SubjectEncoding = Encoding.UTF8,
             IsBodyHtml = false,
         };
-        foreach (var address in options.ManagerAddress.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (var address in ManagerAddresses())
         {
             message.To.Add(new MailAddress(address));
         }

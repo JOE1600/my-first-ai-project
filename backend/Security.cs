@@ -7,6 +7,12 @@ public sealed class SecurityOptions
     public string[] AllowedOrigins { get; init; } = Array.Empty<string>();
     public string[] TrustedProxies { get; init; } = Array.Empty<string>();
     public string[] TrustedNetworks { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// The header a trusted proxy puts the visitor's address in. Behind Cloudflare (as on Render)
+    /// use CF-Connecting-IP, which holds exactly one address set by Cloudflare.
+    /// </summary>
+    public string ClientIpHeader { get; init; } = "X-Forwarded-For";
     public string[] BlockedIps { get; init; } = Array.Empty<string>();
     public int RequestsPerMinute { get; init; } = 60;
     public int EnquiryCooldownSeconds { get; init; } = 15;
@@ -213,11 +219,23 @@ public static class SecurityPipeline
         var guard = app.ApplicationServices.GetRequiredService<ClientGuard>();
         var logger = app.ApplicationServices.GetRequiredService<ILoggerFactory>().CreateLogger("Firewall");
         var blocked = new HashSet<string>(options.BlockedIps.Select(ip => IPAddress.Parse(ip).ToString()));
+        var proxyWarningLogged = 0;
 
         return app.Use(async (context, next) =>
         {
             var client = ClientKey(context);
             var request = context.Request;
+
+            // A trusted proxy's header is consumed by UseForwardedHeaders. If it is still here, the
+            // proxy is not trusted and every visitor shares the proxy's address for limits and bans.
+            if (request.Headers.ContainsKey(options.ClientIpHeader)
+                && Interlocked.Exchange(ref proxyWarningLogged, 1) == 0)
+            {
+                logger.LogWarning(
+                    "Firewall: {Header} was sent by {Proxy}, which is not a trusted proxy, so the visitor's address was not used. Add the proxy's network to Security:TrustedNetworks.",
+                    options.ClientIpHeader,
+                    client);
+            }
 
             if (blocked.Contains(client))
             {

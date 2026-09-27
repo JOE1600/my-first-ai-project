@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.Data.Sqlite;
 
 // `dotnet run -- --export-fixtures <file>` writes the upcoming home games as JSON and exits.
 // The GitHub Pages workflow uses it to publish fixtures.json, so the static site can list
@@ -21,7 +20,11 @@ var databaseDirectory = string.IsNullOrWhiteSpace(configuredDataDirectory)
 Directory.CreateDirectory(databaseDirectory);
 GuestDataStore.RestrictToOwner(databaseDirectory);
 var databasePath = Path.Combine(databaseDirectory, "boxwood.db");
-var connectionString = $"Data Source={databasePath}";
+// Hosts without a persistent disk (such as Render's free plan) use PostgreSQL instead of the file.
+var databaseUrl = Environment.GetEnvironmentVariable("BOXWOOD_DATABASE_URL");
+var database = string.IsNullOrWhiteSpace(databaseUrl)
+    ? EnquiryDatabase.Sqlite(databasePath)
+    : EnquiryDatabase.Postgres(databaseUrl.Trim());
 var security = builder.Configuration.GetSection("Security").Get<SecurityOptions>() ?? new SecurityOptions();
 var dataOptions = builder.Configuration.GetSection("Data").Get<DataOptions>() ?? new DataOptions();
 
@@ -48,10 +51,11 @@ if (!cipher.IsEnabled && !builder.Environment.IsDevelopment())
 
 // Manager emails are optional. The SMTP password, like the other secrets, only comes from the environment.
 var emailOptions = builder.Configuration.GetSection("Email").Get<EmailOptions>() ?? new EmailOptions();
+emailOptions.ResendApiKey = Environment.GetEnvironmentVariable("BOXWOOD_RESEND_API_KEY");
 if (emailOptions.IsPartlyConfigured && !builder.Environment.IsDevelopment())
 {
     throw new InvalidOperationException(
-        "Email is partly configured. Set Email:SmtpHost, Email:From and Email:ManagerAddress together, or none of them.");
+        "Email is partly configured. Set Email:From, Email:ManagerAddress and a transport (Email:SmtpHost or BOXWOOD_RESEND_API_KEY) together, or none of them.");
 }
 
 builder.WebHost.ConfigureKestrel(kestrel =>
@@ -69,6 +73,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.ForwardLimit = 1;
+    options.ForwardedForHeaderName = security.ClientIpHeader;
     options.KnownProxies.Clear();
     foreach (var proxy in security.TrustedProxies)
     {
@@ -105,14 +110,16 @@ builder.Services.AddSingleton<ClientGuard>();
 builder.Services.AddSingleton(cipher);
 builder.Services.AddSingleton(dataOptions);
 builder.Services.AddHostedService(services => new GuestDataMaintenance(
-    connectionString,
+    database,
     databaseDirectory,
     dataOptions,
     services.GetRequiredService<ILogger<GuestDataMaintenance>>()));
 builder.Services.AddSingleton(services => new EnquiryNotifier(
     emailOptions,
     Environment.GetEnvironmentVariable("BOXWOOD_SMTP_PASSWORD"),
+    services.GetRequiredService<IHttpClientFactory>(),
     services.GetRequiredService<ILogger<EnquiryNotifier>>()));
+builder.Services.AddHttpClient("Resend", client => client.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddHostedService(services => services.GetRequiredService<EnquiryNotifier>());
 builder.Services.AddSingleton<ScheduleService>();
 builder.Services.AddMemoryCache();
@@ -139,7 +146,7 @@ app.Logger.LogInformation(
     emailOptions.IsConfigured
         ? "Email: new enquiries will be emailed to the manager."
         : "Email: not configured, so new enquiries are only visible on the manager page.");
-app.Logger.LogInformation("Data: database and backups are stored in {Directory}.", databaseDirectory);
+app.Logger.LogInformation("Data: enquiries are stored in {Database}.", database.Description);
 
 // Forwarded headers go first, so that behind a host's TLS proxy the HTTPS and HSTS steps below
 // see the real scheme and the firewall sees the real client address.
@@ -160,9 +167,13 @@ app.UseApiSecurityHeaders();
 app.UseCors("Frontend");
 app.UseApplicationFirewall();
 
-await InitialiseDatabaseAsync(connectionString);
-GuestDataStore.RestrictDatabaseFiles(databasePath);
-var encryptedRows = await GuestDataStore.EncryptLegacyRowsAsync(connectionString, cipher);
+await database.InitialiseAsync();
+if (!database.IsPostgres)
+{
+    GuestDataStore.RestrictDatabaseFiles(databasePath);
+}
+
+var encryptedRows = await GuestDataStore.EncryptLegacyRowsAsync(database, cipher);
 if (encryptedRows > 0)
 {
     app.Logger.LogInformation("Encrypted {Count} enquiries that were stored before encryption was enabled.", encryptedRows);
@@ -206,10 +217,8 @@ app.MapGet("/api/enquiries", async (HttpContext context, ClientGuard guard) =>
         ORDER BY Id DESC;";
 
     var enquiries = new List<EnquiryResponse>();
-    await using var connection = new SqliteConnection(connectionString);
-    await connection.OpenAsync();
-    await using var command = connection.CreateCommand();
-    command.CommandText = selectSql;
+    await using var connection = await database.OpenAsync();
+    await using var command = EnquiryDatabase.Command(connection, selectSql);
     await using var reader = await command.ExecuteReaderAsync();
     while (await reader.ReadAsync())
     {
@@ -266,21 +275,21 @@ app.MapPost("/api/enquiries", async (
 
     const string insertSql = @"
         INSERT INTO Enquiries (GuestName, GuestEmail, GuestNote, GameChoice, CreatedAtUtc, ClientKey)
-        VALUES ($name, $email, $note, $game, $createdAt, $clientKey);
-        SELECT last_insert_rowid();";
+        VALUES (@name, @email, @note, @game, @createdAt, @clientKey)
+        RETURNING Id;";
 
-    await using var connection = new SqliteConnection(connectionString);
-    await connection.OpenAsync();
-    await using var command = connection.CreateCommand();
-    command.CommandText = insertSql;
     var guestNote = request.GuestNote?.Trim();
-    command.Parameters.AddWithValue("$name", cipher.Protect(guestName));
-    command.Parameters.AddWithValue("$email", cipher.Protect(guestEmail));
-    command.Parameters.AddWithValue("$note", string.IsNullOrEmpty(guestNote) ? DBNull.Value : cipher.Protect(guestNote));
-    command.Parameters.AddWithValue("$game", request.GameChoice);
     var receivedAt = DateTimeOffset.UtcNow;
-    command.Parameters.AddWithValue("$createdAt", receivedAt.ToString("O"));
-    command.Parameters.AddWithValue("$clientKey", cipher.HashClient(clientKey));
+    await using var connection = await database.OpenAsync(cancellationToken);
+    await using var command = EnquiryDatabase.Command(
+        connection,
+        insertSql,
+        ("@name", cipher.Protect(guestName)),
+        ("@email", cipher.Protect(guestEmail)),
+        ("@note", string.IsNullOrEmpty(guestNote) ? null : cipher.Protect(guestNote)),
+        ("@game", request.GameChoice),
+        ("@createdAt", receivedAt.ToString("O")),
+        ("@clientKey", cipher.HashClient(clientKey)));
 
     var id = Convert.ToInt64(await command.ExecuteScalarAsync());
     notifier.Enqueue(new EnquiryNotification(
@@ -348,25 +357,6 @@ static async Task<bool> IsListedGameChoiceAsync(
 
     var games = await schedule.GetUpcomingGamesAsync(cancellationToken);
     return games is null || games.Any(game => ScheduleService.ChoiceValue(game) == gameChoice);
-}
-
-static async Task InitialiseDatabaseAsync(string connectionString)
-{
-    await using var connection = new SqliteConnection(connectionString);
-    await connection.OpenAsync();
-    await using var command = connection.CreateCommand();
-    command.CommandText = @"
-        CREATE TABLE IF NOT EXISTS Enquiries (
-            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-            GuestName TEXT NOT NULL,
-            GuestEmail TEXT NOT NULL,
-            GuestNote TEXT,
-            GameChoice TEXT NOT NULL,
-            CreatedAtUtc TEXT NOT NULL,
-            ClientKey TEXT NOT NULL
-        );
-        ";
-    await command.ExecuteNonQueryAsync();
 }
 
 public sealed class EnquiryRequest

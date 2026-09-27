@@ -229,27 +229,31 @@ function setGameDetail(title, description, linkUrl) {
   gameDetail.replaceChildren(badge, details);
 }
 
-// The live API is preferred. Without one (or if it is down), fall back to fixtures.json, which the
-// GitHub Pages workflow regenerates from the official schedule every few hours.
+// fixtures.json comes first: it is published with the site (rebuilt from the official schedule every
+// few hours), so it loads instantly even while a free-plan API is still waking up. The API is the
+// fallback, for example when running locally where fixtures.json is not generated.
 async function fetchUpcomingGames() {
-  if (enquiriesOpen) {
-    try {
-      const response = await fetch(`${apiBase}/api/games`);
-      if (response.ok) return await response.json();
-    } catch {
-      // Fall through to the published fixture list.
+  try {
+    const response = await fetch("fixtures.json", { cache: "no-cache" });
+    if (response.ok) {
+      // The file can be a few hours old, so drop games that have already been played (Hobart date).
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Hobart" }).format(new Date());
+      const games = await response.json();
+      if (Array.isArray(games)) return games.filter((game) => game.gameDate >= today);
     }
+  } catch {
+    // Fall through to the API.
   }
 
-  const response = await fetch("fixtures.json", { cache: "no-cache" });
-  if (!response.ok) {
+  if (!enquiriesOpen) {
     throw new Error("The official fixture feed is unavailable.");
   }
 
-  // The file can be a few hours old, so drop games that have already been played (Hobart date).
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Hobart" }).format(new Date());
-  const games = await response.json();
-  return Array.isArray(games) ? games.filter((game) => game.gameDate >= today) : [];
+  const response = await fetch(`${apiBase}/api/games`);
+  if (!response.ok) {
+    throw new Error("The official fixture feed is unavailable.");
+  }
+  return response.json();
 }
 
 async function loadUpcomingGames() {
@@ -298,6 +302,12 @@ async function loadUpcomingGames() {
 }
 
 loadUpcomingGames();
+
+// A free-plan API sleeps when idle and takes up to a minute to start. Wake it as soon as the page
+// opens, so it is usually ready by the time a guest sends the form.
+if (enquiriesOpen) {
+  fetch(`${apiBase}/api/health`, { cache: "no-store" }).catch(() => {});
+}
 
 if (!enquiriesOpen && bookingForm) {
   bookingForm.querySelectorAll("input, textarea, button").forEach((control) => {
@@ -366,6 +376,9 @@ bookingForm?.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   submitButton.classList.add("is-loading");
   formStatus.textContent = "Sending your private enquiry…";
+  const slowNotice = window.setTimeout(() => {
+    formStatus.textContent = "Still sending — the booking service is starting up, which can take up to a minute. Please keep this page open.";
+  }, 6000);
 
   try {
     const response = await fetch(`${apiBase}/api/enquiries`, {
@@ -400,6 +413,7 @@ bookingForm?.addEventListener("submit", async (event) => {
       : error.message;
     submitButton.disabled = false;
   } finally {
+    window.clearTimeout(slowNotice);
     submitButton.classList.remove("is-loading");
   }
 });

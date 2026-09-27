@@ -71,12 +71,41 @@ docker run -p 8080:8080 -v boxwood-data:/data --env-file boxwood.env boxwood-api
 
 (`*.env` files are git-ignored, so `boxwood.env` stays on your machine.)
 
+## Free hosting: Render + Neon + Resend
+
+This is the set-up the live site uses. All three services have free plans; you sign up for each.
+
+| Service | Job | Free plan limits that matter |
+| --- | --- | --- |
+| [Neon](https://neon.tech) | PostgreSQL database for enquiries | 0.5 GB storage; sleeps when idle and wakes in about a second |
+| [Render](https://render.com) | Runs the API from `render.yaml` | Sleeps after 15 minutes idle and takes ~30–60 s to wake; blocks outgoing SMTP |
+| [Resend](https://resend.com) | Emails the manager | 100 emails a day, 3,000 a month |
+
+Render's free plan has no persistent disk, so the API stores enquiries in Neon instead of a SQLite file whenever `BOXWOOD_DATABASE_URL` is set. Locally it keeps using SQLite.
+
+1. **Neon:** create a project in the region nearest Hobart (AWS Asia Pacific, Sydney). Copy the connection string from **Connect**. It looks like `postgresql://user:password@ep-xxx.ap-southeast-2.aws.neon.tech/neondb?sslmode=require`. The API creates its table on first start.
+2. **Resend:** create an API key. To email any address, verify a domain you own under **Domains** and use a sender on it, such as `enquiries@your-domain.com`. Without a domain, Resend only delivers to the address you signed up with, using the sender `onboarding@resend.dev`.
+3. **Render:** go to **New → Blueprint**, connect GitHub and pick this repository. Render reads `render.yaml` and asks for:
+   - `BOXWOOD_DATABASE_URL`: the Neon connection string.
+   - `BOXWOOD_RESEND_API_KEY`: the Resend API key.
+   - `Email__From`: the verified sender (or `onboarding@resend.dev`).
+   - `Email__ManagerAddress`: where enquiry emails go (separate several with commas).
+
+   Render generates `BOXWOOD_ADMIN_API_KEY` and `BOXWOOD_DATA_KEY` itself. After the first deploy, open the service's **Environment** tab to read the manager key, and save both keys in a password manager. **Never regenerate `BOXWOOD_DATA_KEY`**: the stored enquiries can only be read with it.
+4. Check that `https://<your-service>.onrender.com/api/health` shows `{"status":"ok"}`.
+5. **GitHub:** go to **Settings → Secrets and variables → Actions → Variables** and add `BOXWOOD_API_BASE` = `https://<your-service>.onrender.com`. Then re-run the Pages workflow (or push). The enquiry form switches on.
+
+Staff open `https://joe1600.github.io/my-first-ai-project/manager.html`, which is already pointed at the API, and enter the manager key.
+
+If the Render logs show `Firewall: CF-Connecting-IP was sent by <address>, which is not a trusted proxy`, add that address's network to the `Security__TrustedNetworks__*` variables in the Render dashboard. Until you do, every visitor shares one address for rate limits and bans.
+
 ## Where the data is stored
 
 Enquiries live in one SQLite file, `boxwood.db`, in the data folder:
 
 - **Locally:** `backend/app_data/boxwood.db`.
-- **Hosted:** `/data/boxwood.db` on the persistent volume (set by `BOXWOOD_DATA_DIR`, which the Docker image sets to `/data`).
+- **Hosted with a disk:** `/data/boxwood.db` on the persistent volume (set by `BOXWOOD_DATA_DIR`, which the Docker image sets to `/data`).
+- **Hosted on Render's free plan:** the Neon PostgreSQL database in `BOXWOOD_DATABASE_URL`. Neon keeps its own restore history, so the API's file backups are skipped there.
 
 Daily backups go to `backups/` in the same folder, and enquiries older than `Data:RetentionDays` (180) are deleted. Guest names, emails and notes are encrypted inside the file (see [Guest data protection](#guest-data-protection)). SQLite is right for one API instance. Running several instances at once would need a shared database such as PostgreSQL instead.
 
@@ -84,7 +113,7 @@ To move existing local enquiries to the server, copy `app_data/boxwood.db` onto 
 
 ## Manager email notifications
 
-When `Email:SmtpHost`, `Email:From` and `Email:ManagerAddress` are all set, the API emails the manager about every new enquiry. Any SMTP service works (for example Resend, SendGrid, Postmark, Amazon SES, Microsoft 365 or Gmail with an app password).
+When `Email:From`, `Email:ManagerAddress` and a way to send are set, the API emails the manager about every new enquiry. It can send in two ways: through Resend's HTTPS API when `BOXWOOD_RESEND_API_KEY` is set (needed on Render's free plan, which blocks SMTP), or otherwise over SMTP with the settings below. Any SMTP service works (for example Resend, SendGrid, Postmark, Amazon SES, Microsoft 365 or Gmail with an app password).
 
 | Variable | Example |
 | --- | --- |
@@ -160,4 +189,4 @@ Open `http://localhost:8080/manager.html`, enter the API address (`http://localh
 
 The manager page shows totals, search and a match filter. Each enquiry has **Reply** (opens your mail app addressed to the guest) and **Copy email** buttons, and **Export CSV** downloads the enquiries currently shown. The API address is remembered on that device. The key is never stored, and the page locks itself after 30 minutes without activity.
 
-The manager page is not published to GitHub Pages. Never put the manager key in frontend source code or commit it to Git.
+The manager page is published to GitHub Pages at `/manager.html` so staff can use it from any device. It contains no data and is hidden from search engines; enquiries only load with the manager key, and five wrong keys lock that address out for 15 minutes. Never put the manager key in frontend source code or commit it to Git.

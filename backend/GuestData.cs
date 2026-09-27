@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -198,23 +199,21 @@ public static class GuestDataStore
     }
 
     /// <summary>Encrypts any rows stored before encryption was switched on. Returns the number updated.</summary>
-    public static async Task<int> EncryptLegacyRowsAsync(string connectionString, GuestDataCipher cipher)
+    public static async Task<int> EncryptLegacyRowsAsync(EnquiryDatabase database, GuestDataCipher cipher)
     {
         if (!cipher.IsEnabled)
         {
             return 0;
         }
 
-        await using var connection = new SqliteConnection(connectionString);
-        await connection.OpenAsync();
+        await using var connection = await database.OpenAsync();
         var legacy = new List<(long Id, string Name, string Email, string? Note, string ClientKey)>();
-        await using (var select = connection.CreateCommand())
-        {
-            select.CommandText = @"
+        await using (var select = EnquiryDatabase.Command(connection, @"
                 SELECT Id, GuestName, GuestEmail, GuestNote, ClientKey
                 FROM Enquiries
                 WHERE GuestName NOT LIKE 'enc:v_:%' OR GuestEmail NOT LIKE 'enc:v_:%'
-                   OR (GuestNote IS NOT NULL AND GuestNote NOT LIKE 'enc:v_:%');";
+                   OR (GuestNote IS NOT NULL AND GuestNote NOT LIKE 'enc:v_:%');"))
+        {
             await using var reader = await select.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
@@ -223,23 +222,22 @@ public static class GuestDataStore
             }
         }
 
-        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
         foreach (var row in legacy)
         {
-            await using var update = connection.CreateCommand();
-            update.Transaction = transaction;
-            update.CommandText = @"
+            await using var update = EnquiryDatabase.Command(connection, @"
                 UPDATE Enquiries
-                SET GuestName = $name, GuestEmail = $email, GuestNote = $note, ClientKey = $client
-                WHERE Id = $id;";
-            update.Parameters.AddWithValue("$name", cipher.Protect(row.Name));
-            update.Parameters.AddWithValue("$email", cipher.Protect(row.Email));
-            update.Parameters.AddWithValue("$note", row.Note is null ? DBNull.Value : cipher.Protect(row.Note));
-            // Old rows stored raw IP addresses; replace them with the keyed hash.
-            update.Parameters.AddWithValue("$client", row.ClientKey.Length == 32 && row.ClientKey.All(c => c is (>= '0' and <= '9') or (>= 'a' and <= 'f'))
-                ? row.ClientKey
-                : cipher.HashClient(row.ClientKey));
-            update.Parameters.AddWithValue("$id", row.Id);
+                SET GuestName = @name, GuestEmail = @email, GuestNote = @note, ClientKey = @client
+                WHERE Id = @id;",
+                ("@name", cipher.Protect(row.Name)),
+                ("@email", cipher.Protect(row.Email)),
+                ("@note", row.Note is null ? null : cipher.Protect(row.Note)),
+                // Old rows stored raw IP addresses; replace them with the keyed hash.
+                ("@client", row.ClientKey.Length == 32 && row.ClientKey.All(c => c is (>= '0' and <= '9') or (>= 'a' and <= 'f'))
+                    ? row.ClientKey
+                    : cipher.HashClient(row.ClientKey)),
+                ("@id", row.Id));
+            update.Transaction = transaction;
             await update.ExecuteNonQueryAsync();
         }
 
@@ -247,9 +245,7 @@ public static class GuestDataStore
         if (legacy.Count > 0)
         {
             // Rewrite the file so the old plaintext copies do not survive in free pages.
-            await using var vacuum = connection.CreateCommand();
-            vacuum.CommandText = "VACUUM;";
-            await vacuum.ExecuteNonQueryAsync();
+            await database.CompactAsync(connection);
         }
 
         return legacy.Count;
@@ -257,23 +253,23 @@ public static class GuestDataStore
 }
 
 /// <summary>
-/// Daily housekeeping: deletes enquiries older than the retention period, then takes an online
-/// backup of the database and keeps only the newest few.
+/// Daily housekeeping: deletes enquiries older than the retention period, then (for SQLite) takes an
+/// online backup of the database and keeps only the newest few. Hosted PostgreSQL keeps its own backups.
 /// </summary>
 public sealed class GuestDataMaintenance : BackgroundService
 {
-    private readonly string connectionString;
+    private readonly EnquiryDatabase database;
     private readonly string databaseDirectory;
     private readonly DataOptions options;
     private readonly ILogger<GuestDataMaintenance> logger;
 
     public GuestDataMaintenance(
-        string connectionString,
+        EnquiryDatabase database,
         string databaseDirectory,
         DataOptions options,
         ILogger<GuestDataMaintenance> logger)
     {
-        this.connectionString = connectionString;
+        this.database = database;
         this.databaseDirectory = databaseDirectory;
         this.options = options;
         this.logger = logger;
@@ -299,29 +295,30 @@ public sealed class GuestDataMaintenance : BackgroundService
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
         var cutoff = DateTimeOffset.UtcNow.AddDays(-options.RetentionDays).ToString("O");
-        await using (var connection = new SqliteConnection(connectionString))
+        await using (var connection = await database.OpenAsync(cancellationToken))
         {
-            await connection.OpenAsync(cancellationToken);
-            await using var delete = connection.CreateCommand();
-            delete.CommandText = "DELETE FROM Enquiries WHERE CreatedAtUtc < $cutoff;";
-            delete.Parameters.AddWithValue("$cutoff", cutoff);
+            await using var delete = EnquiryDatabase.Command(
+                connection, "DELETE FROM Enquiries WHERE CreatedAtUtc < @cutoff;", ("@cutoff", cutoff));
             var removed = await delete.ExecuteNonQueryAsync(cancellationToken);
             if (removed > 0)
             {
                 // Rebuild the file so deleted rows do not linger in free pages.
-                await using var vacuum = connection.CreateCommand();
-                vacuum.CommandText = "VACUUM;";
-                await vacuum.ExecuteNonQueryAsync(cancellationToken);
+                await database.CompactAsync(connection, cancellationToken);
                 logger.LogInformation(
                     "Retention: deleted {Count} enquiries older than {Days} days.", removed, options.RetentionDays);
             }
+        }
+
+        if (database.IsPostgres)
+        {
+            return;
         }
 
         var backupDirectory = Path.Combine(databaseDirectory, "backups");
         Directory.CreateDirectory(backupDirectory);
         GuestDataStore.RestrictToOwner(backupDirectory);
         var backupPath = Path.Combine(backupDirectory, $"boxwood-{DateTime.UtcNow:yyyyMMdd-HHmmss}.db");
-        await using (var source = new SqliteConnection(connectionString))
+        await using (var source = new SqliteConnection(database.SqliteConnectionString))
         await using (var destination = new SqliteConnection($"Data Source={backupPath};Pooling=False"))
         {
             await source.OpenAsync(cancellationToken);
