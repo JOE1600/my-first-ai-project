@@ -13,6 +13,9 @@ const hotelViewer = document.querySelector("#hotel-viewer");
 const hotelPhotoRing = document.querySelector("#hotel-photo-ring");
 const apiBase = (window.BOXWOOD_API_BASE ?? "http://localhost:5050").replace(/\/$/, "");
 const enquiriesOpen = apiBase !== "";
+// Without an API, enquiries can still be sent as a pre-filled email from the guest's own mail app.
+const enquiryEmail = (window.BOXWOOD_ENQUIRY_EMAIL ?? "").trim();
+const emailEnquiries = !enquiriesOpen && enquiryEmail !== "";
 
 const clientRateLimit = {
   lastSubmission: 0,
@@ -309,11 +312,36 @@ if (enquiriesOpen) {
   fetch(`${apiBase}/api/health`, { cache: "no-store" }).catch(() => {});
 }
 
-if (!enquiriesOpen && bookingForm) {
+if (emailEnquiries && bookingForm) {
+  formStatus.textContent = "Sending opens your email app with your enquiry ready to go — just press Send.";
+} else if (!enquiriesOpen && bookingForm) {
   bookingForm.querySelectorAll("input, textarea, button").forEach((control) => {
     control.disabled = true;
   });
   formStatus.textContent = "Online enquiries open soon. Please check back shortly.";
+}
+
+// Builds a mailto: link, so the enquiry is sent from the guest's own email account.
+function sendEnquiryByEmail() {
+  const match = gameChoice.value === "future"
+    ? "Another home game"
+    : gameChoice.selectedOptions[0]?.textContent || gameChoice.value;
+  const note = guestNote.value.trim();
+  const body = [
+    "Hello Boxwood team,",
+    "",
+    "I'd like to enquire about the Stay & Play game-night package.",
+    "",
+    `Name: ${guestName.value.trim()}`,
+    `Email: ${guestEmail.value.trim()}`,
+    `Match: ${match}`,
+    `Preferences: ${note || "None"}`,
+    "",
+    "Thank you",
+  ].join("\n");
+  const subject = `Stay & Play enquiry – ${guestName.value.trim()}`;
+  window.location.href = `mailto:${encodeURIComponent(enquiryEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  formStatus.textContent = `Your email app should now open with the enquiry ready. Press Send to reach us. If nothing opened, email ${enquiryEmail}.`;
 }
 
 function setFieldError(input, errorElement, message) {
@@ -361,6 +389,12 @@ bookingForm?.addEventListener("submit", async (event) => {
   if (!gameChoice?.value) {
     formStatus.classList.add("is-error");
     formStatus.textContent = "Please wait for the official fixtures to load before sending your enquiry.";
+    return;
+  }
+
+  if (emailEnquiries) {
+    // Bots that fill the hidden field get nothing; people get their mail app.
+    if (!guestWebsite?.value) sendEnquiryByEmail();
     return;
   }
 

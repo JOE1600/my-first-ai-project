@@ -37,7 +37,7 @@ The live game picker reads `GET /api/games`; the API needs outbound HTTPS access
 
 The site does not need the API to list matches. Every GitHub Pages deploy (on each push to `main`, and automatically every 6 hours) runs `dotnet run -- --export-fixtures _site/fixtures.json`, which uses the same parser to publish the upcoming home games as a static file. The page tries `GET /api/games` first and falls back to `fixtures.json`, skipping games that have already been played. If the official site is down during a deploy, that step is skipped and the page shows its "check the official schedule" fallback.
 
-The page is served with a Content-Security-Policy, so inline scripts are blocked. To use another API host locally, change `window.BOXWOOD_API_BASE` in `config.js` **and** the `connect-src` entry in the CSP `<meta>` tag of `index.html`. On GitHub Pages the deploy workflow does both from the `BOXWOOD_API_BASE` repository variable (leave it empty to show "Online enquiries open soon").
+The page is served with a Content-Security-Policy, so inline scripts are blocked. To use another API host locally, change `window.BOXWOOD_API_BASE` in `config.js` **and** the `connect-src` entry in the CSP `<meta>` tag of `index.html`. On GitHub Pages the deploy workflow does both from the `BOXWOOD_API_BASE` repository variable. While that is empty, the live form sends enquiries by email instead: it opens the guest's own email app with a pre-filled message to `BOXWOOD_ENQUIRY_EMAIL` (a repository variable, defaulting to sharmamanjot@icloud.com), and the guest presses Send. The manager page and saved enquiries then only exist when the API runs locally.
 
 ## Hosting publicly
 

@@ -50,13 +50,19 @@ jobs:
       - name: Point the site at the enquiry API
         env:
           API_BASE: ${{ vars.BOXWOOD_API_BASE }}
+          # Without an API, the form opens the guest's email app addressed to this inbox.
+          ENQUIRY_EMAIL: ${{ vars.BOXWOOD_ENQUIRY_EMAIL || 'sharmamanjot@icloud.com' }}
         run: |
           API_BASE="${API_BASE%/}"
           if [ -n "$API_BASE" ] && ! printf '%s' "$API_BASE" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?$'; then
             echo "BOXWOOD_API_BASE must look like https://api.example.com" >&2
             exit 1
           fi
-          printf 'window.BOXWOOD_API_BASE = "%s";\n' "$API_BASE" > _site/config.js
+          if ! printf '%s' "$ENQUIRY_EMAIL" | grep -Eq '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
+            echo "BOXWOOD_ENQUIRY_EMAIL must be a plain email address" >&2
+            exit 1
+          fi
+          printf 'window.BOXWOOD_API_BASE = "%s";\nwindow.BOXWOOD_ENQUIRY_EMAIL = "%s";\n' "$API_BASE" "$ENQUIRY_EMAIL" > _site/config.js
           if [ -n "$API_BASE" ]; then
             sed -i "s#http://localhost:5050#$API_BASE#g" _site/index.html
           else
