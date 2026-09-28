@@ -1,13 +1,3 @@
-.islington-card img {
-  display: block;
-  width: calc(100% + 68px);
-  height: 155px;
-  margin: -34px -34px 0;
-  object-fit: cover;
-  object-position: center 68%;
-  filter: none;
-}
-
 .hotel-explorer {
   position: relative;
   display: grid;
