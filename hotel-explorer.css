@@ -20,7 +20,7 @@
   color: var(--cream);
   background:
     radial-gradient(ellipse at 76% 48%, #b2863a22, transparent 37%),
-    linear-gradient(125deg, #0d2924, #173a32 58%, #102b26);
+    linear-gradient(125deg, #0b1526, #14233d 58%, #0b1526);
 }
 
 .hotel-explorer:after {
@@ -54,7 +54,7 @@
 .hotel-explorer-copy > p:not(.eyebrow) {
   max-width: 390px;
   margin: 25px 0 0;
-  color: #c6d2ca;
+  color: #c7cfdc;
   font-size: 14px;
   line-height: 1.75;
 }
@@ -81,7 +81,7 @@
 }
 
 .hotel-view-caption small {
-  color: #c6d2ca;
+  color: #c7cfdc;
   font-size: 11px;
   line-height: 1.5;
 }
@@ -167,7 +167,7 @@
   margin: 0;
   overflow: hidden;
   border: 1px solid #f4efe455;
-  background: #152c27;
+  background: #101b2e;
   box-shadow: 0 25px 60px #0008;
   backface-visibility: hidden;
   transform: translate(-50%, -50%) rotateY(calc(var(--photo-index) * 72deg)) translateZ(330px);
@@ -176,7 +176,7 @@
 .hotel-photo-card:after {
   position: absolute;
   inset: 45% 0 0;
-  background: linear-gradient(0deg, #0d2924a8, transparent);
+  background: linear-gradient(0deg, #0b1526a8, transparent);
   content: "";
   pointer-events: none;
 }
