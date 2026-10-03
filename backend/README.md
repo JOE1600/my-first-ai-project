@@ -95,7 +95,7 @@ Render's free plan has no persistent disk, so the API stores enquiries in Neon i
 4. Check that `https://<your-service>.onrender.com/api/health` shows `{"status":"ok"}`.
 5. **GitHub:** go to **Settings → Secrets and variables → Actions → Variables** and add `BOXWOOD_API_BASE` = `https://<your-service>.onrender.com`. Then re-run the Pages workflow (or push). The enquiry form switches on.
 
-Staff open `https://joe1600.github.io/my-first-ai-project/manager.html`, which is already pointed at the API, and enter the manager key.
+Staff open `https://joe1600.github.io/stay-and-play-islington/manager.html`, which is already pointed at the API, and enter the manager key.
 
 If the Render logs show `Firewall: CF-Connecting-IP was sent by <address>, which is not a trusted proxy`, add that address's network to the `Security__TrustedNetworks__*` variables in the Render dashboard. Until you do, every visitor shares one address for rate limits and bans.
 

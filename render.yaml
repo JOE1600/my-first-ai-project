@@ -34,7 +34,7 @@ services:
       - key: Email__ManagerAddress
         sync: false
       - key: Email__ManagerPageUrl
-        value: https://joe1600.github.io/my-first-ai-project/manager.html
+        value: https://joe1600.github.io/stay-and-play-islington/manager.html
       # The website on GitHub Pages, plus the manager page when run from a laptop.
       - key: Security__AllowedOrigins__0
         value: https://joe1600.github.io
