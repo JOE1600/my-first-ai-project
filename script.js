@@ -200,7 +200,7 @@ function showGameDetail() {
 
   setGameDetail(
     `JackJumpers vs ${selectedOption.dataset.opponent}`,
-    `${selectedOption.dataset.date} · ${selectedOption.dataset.tipoff} · Home game`,
+    `${selectedOption.dataset.date} · ${selectedOption.dataset.tipoff} · ${selectedOption.dataset.venue || "MyState Bank Arena"}`,
     selectedOption.dataset.url
   );
 }
@@ -259,11 +259,84 @@ async function fetchUpcomingGames() {
   return response.json();
 }
 
+// Tip-off as a real moment in time. Hobart is UTC+11 in daylight saving (Oct–Apr), otherwise UTC+10.
+function tipoffTime(game) {
+  const match = /^(\d{1,2}):(\d{2})\s*(am|pm)$/i.exec(game.tipoff || "");
+  if (!match || !game.gameDate) return null;
+  let hour = Number(match[1]) % 12;
+  if (match[3].toLowerCase() === "pm") hour += 12;
+  const month = Number(game.gameDate.slice(5, 7));
+  const offset = month >= 10 || month <= 3 ? "+11:00" : "+10:00";
+  const time = Date.parse(`${game.gameDate}T${String(hour).padStart(2, "0")}:${match[2]}:00${offset}`);
+  return Number.isNaN(time) ? null : time;
+}
+
+function renderNextGame(game) {
+  const card = document.querySelector("#next-game");
+  if (!card || !game) return;
+  card.querySelector("[data-next-opponent]").textContent = `vs ${game.opponent}`;
+  card.querySelector("[data-next-when]").textContent = `${game.displayDate} · ${game.tipoff}`;
+  const countdown = card.querySelector("[data-next-countdown]");
+  const target = tipoffTime(game);
+  const tick = () => {
+    if (!target) { countdown.textContent = "Tip-off time to be confirmed"; return; }
+    const left = target - Date.now();
+    if (left <= 0) { countdown.textContent = "It's game day"; return; }
+    const days = Math.floor(left / 86400000);
+    const hours = Math.floor((left % 86400000) / 3600000);
+    const minutes = Math.floor((left % 3600000) / 60000);
+    countdown.textContent = `${days}d ${hours}h ${minutes}m to tip-off`;
+  };
+  tick();
+  window.setInterval(tick, 30000);
+  card.hidden = false;
+}
+
+// Visual game cards above the picker. Choosing one selects it for the enquiry and jumps to the form.
+function renderGameCards(games) {
+  const container = document.querySelector("#game-cards");
+  if (!container) return;
+  container.replaceChildren();
+  games.slice(0, 8).forEach((game) => {
+    const value = `${game.displayDate} - JackJumpers vs ${game.opponent} - ${game.tipoff}`;
+    const [weekday, day, month] = game.displayDate.replace(",", "").split(" ");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "game-card";
+    const date = document.createElement("span");
+    date.className = "game-card-date";
+    const dayEl = document.createElement("strong");
+    dayEl.textContent = day;
+    date.append(dayEl, document.createTextNode(`${month} · ${weekday}`));
+    const info = document.createElement("span");
+    info.className = "game-card-info";
+    const vs = document.createElement("strong");
+    vs.textContent = `vs ${game.opponent}`;
+    const meta = document.createElement("small");
+    meta.textContent = `${game.tipoff} · ${game.venue || "MyState Bank Arena"}`;
+    info.append(vs, meta);
+    const cta = document.createElement("span");
+    cta.className = "game-card-cta";
+    cta.textContent = "Enquire ↗";
+    button.append(date, info, cta);
+    button.addEventListener("click", () => {
+      gameChoice.value = value;
+      showGameDetail();
+      container.querySelectorAll(".game-card").forEach((card) => card.classList.toggle("is-selected", card === button));
+      document.querySelector("#booking-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      formStatus.classList.remove("is-error");
+      formStatus.textContent = `Selected: JackJumpers vs ${game.opponent}, ${game.displayDate}. Add your details below.`;
+    });
+    container.append(button);
+  });
+}
+
 async function loadUpcomingGames() {
   if (!gameChoice) return;
 
   try {
-    const games = await fetchUpcomingGames();
+    // The package is built around Hobart games; older fixture files may not list venues yet.
+    const games = (await fetchUpcomingGames()).filter((game) => !game.venue || /mystate/i.test(game.venue));
     gameChoice.replaceChildren();
 
     games.forEach((game) => {
@@ -274,8 +347,11 @@ async function loadUpcomingGames() {
       option.dataset.date = game.displayDate;
       option.dataset.tipoff = game.tipoff;
       option.dataset.url = game.officialUrl;
+      option.dataset.venue = game.venue || "MyState Bank Arena";
       gameChoice.append(option);
     });
+    renderGameCards(games);
+    renderNextGame(games[0]);
 
     const futureOption = document.createElement("option");
     futureOption.value = "future";

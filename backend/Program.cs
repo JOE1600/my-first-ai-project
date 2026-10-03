@@ -382,4 +382,5 @@ public sealed record UpcomingGame(
     string GameDate,
     string Tipoff,
     string DisplayDate,
-    string OfficialUrl);
+    string OfficialUrl,
+    string Venue);

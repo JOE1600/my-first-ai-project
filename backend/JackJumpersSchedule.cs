@@ -22,6 +22,13 @@ public static class JackJumpersSchedule
         RegexOptions.IgnoreCase | RegexOptions.Compiled,
         MatchTimeout);
     private static readonly Regex Whitespace = new("\\s+", RegexOptions.Compiled, MatchTimeout);
+    private static readonly Regex VenueField = new(
+        "fs-list-field=[\"']venue[\"'][^>]*>(?<venue>[^<]*)<",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled,
+        MatchTimeout);
+
+    /// <summary>The Stay &amp; Play package is built around Hobart games, so other venues are left out.</summary>
+    public const string HomeVenue = "MyState Bank Arena";
 
     public static IReadOnlyList<UpcomingGame> ParseUpcomingHomeGames(string scheduleHtml, DateTime todayUtc)
     {
@@ -48,6 +55,15 @@ public static class JackJumpersSchedule
             var opponent = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(
                 fixture.Groups["opponent"].Value.Replace('-', ' '))
                 .Replace("36Ers", "36ers", StringComparison.Ordinal);
+            // "Home" games are sometimes played away from Hobart (Launceston, Perth). If the venue is
+            // listed and isn't MyState Bank Arena, skip it; if the page stops listing venues, keep the game.
+            var venueMatch = VenueField.Match(link.Groups["content"].Value);
+            var venue = venueMatch.Success ? WebUtility.HtmlDecode(venueMatch.Groups["venue"].Value).Trim() : "";
+            if (venue.Length > 0 && !venue.Contains(HomeVenue, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var content = WebUtility.HtmlDecode(Markup.Replace(link.Groups["content"].Value, " "));
             var tipoff = TipoffPattern.Match(content);
             var normalizedTipoff = tipoff.Success
@@ -60,7 +76,8 @@ public static class JackJumpersSchedule
                 gameDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 normalizedTipoff,
                 gameDate.ToString("ddd, d MMM yyyy", CultureInfo.InvariantCulture),
-                $"{ScheduleUrl}/schedule/{slug}"));
+                $"{ScheduleUrl}/schedule/{slug}",
+                venue.Length > 0 ? venue : HomeVenue));
         }
 
         return games.OrderBy(game => game.GameDate, StringComparer.Ordinal).Take(MaxGames).ToArray();
